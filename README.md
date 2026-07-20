@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chess Shuffle
 
-## Getting Started
+3D Chess960 (Fischer Random) online: create a lobby, invite a friend, hit **Start**, play on a Three.js board.
 
-First, run the development server:
+Back-rank pieces are shuffled; pawns stay on ranks 2 and 7.
+
+## Quick start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Create lobby** → copy the code  
+2. Open a second browser / incognito → **Join** with the code  
+3. Host clicks **Start game** → shared Chess960 position in 3D  
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Local multiplayer uses an in-memory room API (works in `next dev` on one machine).
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Next.js app |
+| `npm test` | Chess960 / engine unit tests |
+| `npm run build` | Production build |
+| `npm run party:dev` | PartyKit realtime server (optional) |
+| `npm run party:deploy` | Deploy PartyKit |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## PartyKit (Vercel multiplayer)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+In-memory lobbies do **not** survive across Vercel serverless instances. For production realtime:
 
-## Deploy on Vercel
+1. Deploy PartyKit: `npm run party:deploy`
+2. Set on Vercel: `NEXT_PUBLIC_PARTYKIT_HOST=your-project.username.partykit.dev`
+3. Redeploy the Next.js app
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Without that env var, the app uses `/api/room/[code]` polling (fine for local demo).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind  
+- React Three Fiber / Three.js  
+- chess.js + custom Chess960 shuffle (`lib/chess/shuffle.ts`)  
+- PartyKit (optional) or local room API  
+
+## Docs
+
+- [Implementation plan](docs/IMPLEMENTATION_PLAN.md)  
+- Agent skill: `.cursor/skills/chess-shuffle-expert/`

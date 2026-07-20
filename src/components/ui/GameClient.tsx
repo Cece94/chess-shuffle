@@ -1,0 +1,133 @@
+'use client'
+
+import { useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { BoardShell } from '@/components/board/BoardShell'
+import { MaterialMeter } from '@/components/ui/MaterialMeter'
+import { useRoom } from '@/lib/realtime/use-room'
+import { useGameUiStore } from '@/store/gameUiStore'
+import type { Color } from '@/lib/chess/types'
+
+type Props = { code: string }
+
+export function GameClient({ code }: Props) {
+  const router = useRouter()
+  const { state, youId, error, send } = useRoom(code)
+  const clearSelection = useGameUiStore((s) => s.clearSelection)
+
+  useEffect(() => {
+    if (state?.phase === 'lobby' && !state.fen) {
+      router.replace(`/lobby/${code}`)
+    }
+  }, [state?.phase, state?.fen, code, router])
+
+  useEffect(() => {
+    clearSelection()
+  }, [state?.fen, clearSelection])
+
+  const myColor: Color | null = useMemo(() => {
+    if (!state) return null
+    if (state.whiteId === youId) return 'w'
+    if (state.blackId === youId) return 'b'
+    return null
+  }, [state, youId])
+
+  const interactive =
+    state?.phase === 'playing' && myColor !== null && state.turn === myColor
+
+  if (!state?.fen) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-[#6e7682] text-[#d8dde4]">
+        Loading game…
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 bg-[#6e7682]">
+      {/* Full-viewport Three.js canvas */}
+      <div className="absolute inset-0">
+        <BoardShell
+          fen={state.fen}
+          orientation={myColor ?? 'w'}
+          interactive={interactive}
+          lastMove={state.lastMove}
+          myColor={myColor}
+          onMove={(move) => void send({ type: 'move', move })}
+        />
+      </div>
+
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3 sm:p-4">
+        <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 backdrop-blur-sm">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#9a8b78]">Chess Shuffle</p>
+          <h1 className="font-serif text-lg text-[#f3efe6] sm:text-xl">
+            Position #{state.spId ?? '—'}
+          </h1>
+        </div>
+        <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 text-right text-sm text-[#9a8b78] backdrop-blur-sm">
+          <p>
+            Turn:{' '}
+            <span className="text-[#f3efe6]">
+              {state.turn === 'w' ? 'White' : 'Black'}
+              {state.isCheck ? ' · Check' : ''}
+            </span>
+          </p>
+          <p>
+            You:{' '}
+            <span className="text-[#f3efe6]">
+              {myColor === 'w' ? 'White' : myColor === 'b' ? 'Black' : 'Spectator'}
+            </span>
+          </p>
+        </div>
+      </header>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-2 p-3 sm:p-4">
+        <div className="pointer-events-auto flex flex-wrap gap-2">
+          {state.phase === 'playing' && (
+            <button
+              type="button"
+              onClick={() => void send({ type: 'resign' })}
+              className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm hover:border-red-400 hover:text-red-300"
+            >
+              Resign
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => router.push(`/lobby/${code}`)}
+            className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm"
+          >
+            Back to lobby
+          </button>
+        </div>
+        <div className="ml-auto flex flex-col items-end gap-2">
+          {error && <p className="rounded-lg bg-[#1a1510]/80 px-3 py-2 text-sm text-red-400">{error}</p>}
+          <MaterialMeter fen={state.fen} />
+        </div>
+      </div>
+
+      {state.phase === 'finished' && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
+          <div className="rounded-xl border border-[#c4a35a]/40 bg-[#241e18] p-6 text-center">
+            <p className="font-serif text-xl text-[#f3efe6]">
+              {state.winner === 'draw'
+                ? 'Draw'
+                : state.winner === 'w'
+                  ? 'White wins'
+                  : 'Black wins'}
+            </p>
+            {state.hostId === youId && (
+              <button
+                type="button"
+                onClick={() => void send({ type: 'rematch' })}
+                className="mt-3 rounded-lg bg-[#c4a35a] px-5 py-2 font-semibold text-[#1a1510]"
+              >
+                Rematch (new shuffle)
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
