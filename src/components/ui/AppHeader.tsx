@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation'
 
 export function AppHeader() {
   const pathname = usePathname()
-  // In-game: leave via "Back to lobby" only — title is not a home link
-  const inGame = pathname.startsWith('/game/')
+  // In-game: leave via in-board controls — title is not a home link
+  const inGame = pathname.startsWith('/game/') || pathname.startsWith('/play')
 
   const titleClass =
     'font-serif text-xl tracking-tight text-[#f3efe6] sm:text-2xl'

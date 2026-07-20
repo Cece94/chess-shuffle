@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { CreateLobbyButton } from '@/components/lobby/CreateLobbyButton'
 import { JoinLobbyForm } from '@/components/lobby/JoinLobbyForm'
 import { LobbyList } from '@/components/lobby/LobbyList'
@@ -34,6 +35,15 @@ export default function HomePage() {
         </div>
 
         <div className="space-y-3 rounded-2xl border border-[#3d342c] bg-[#241e18]/80 p-5 text-left backdrop-blur">
+          <Link
+            href="/play"
+            className="flex w-full items-center justify-center rounded-lg border border-[#c4a35a]/60 bg-[#c4a35a]/10 px-5 py-3 text-base font-semibold text-[#c4a35a] transition hover:bg-[#c4a35a]/20"
+          >
+            Play vs bot
+          </Link>
+          <div className="relative py-2 text-center text-xs uppercase tracking-widest text-[#6b5e50]">
+            or online
+          </div>
           <CreateLobbyButton />
           <div className="relative py-2 text-center text-xs uppercase tracking-widest text-[#6b5e50]">
             or join
