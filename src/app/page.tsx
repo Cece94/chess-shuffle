@@ -4,7 +4,7 @@ import { LobbyList } from '@/components/lobby/LobbyList'
 
 export default function HomePage() {
   return (
-    <main className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-16">
+    <main className="relative flex h-full flex-col items-center justify-center overflow-y-auto px-4 py-12">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-80"

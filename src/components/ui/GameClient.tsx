@@ -88,7 +88,7 @@ export function GameClient({ code }: Props) {
 
   if (!state?.fen) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#6e7682] text-[#d8dde4]">
+      <div className="flex h-full items-center justify-center bg-[#6e7682] text-[#d8dde4]">
         Loading game…
       </div>
     )
@@ -106,14 +106,13 @@ export function GameClient({ code }: Props) {
   const boardKey = `${state.spId}-${state.whiteId}-${state.blackId}`
 
   return (
-    <div className="fixed inset-0 bg-[#6e7682]">
+    <div className="absolute inset-0 bg-[#6e7682]">
       <div className="absolute inset-0" key={boardKey}>
         {viewMode === '3d' ? <BoardShell {...boardProps} /> : <Board2D {...boardProps} />}
       </div>
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3 sm:p-4">
         <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 backdrop-blur-sm">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#9a8b78]">Chess Shuffle</p>
           <h1 className="font-serif text-lg text-[#f3efe6] sm:text-xl">
             Position #{state.spId ?? '—'}
           </h1>

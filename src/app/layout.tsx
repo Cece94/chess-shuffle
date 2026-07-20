@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Fraunces, Source_Sans_3 } from 'next/font/google'
+import { AppHeader } from '@/components/ui/AppHeader'
 import './globals.css'
 
 const display = Fraunces({
@@ -24,8 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} h-full antialiased`}>
-      <body className="h-full overflow-hidden bg-[#1a1510] font-sans text-[#f3efe6]">
-        {children}
+      <body className="flex h-dvh flex-col overflow-hidden bg-[#1a1510] font-sans text-[#f3efe6]">
+        <AppHeader />
+        <div className="relative min-h-0 flex-1">{children}</div>
       </body>
     </html>
   )
