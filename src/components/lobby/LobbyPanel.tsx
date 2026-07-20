@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRoom } from '@/lib/realtime/use-room'
 import type { HostColorChoice } from '@/lib/realtime/protocol'
 
 type Props = { code: string }
+
+const GUEST_NAME_KEY = 'chess-shuffle-guest-name'
+const MAX_NAME_LEN = 20
 
 const COLOR_OPTIONS: { value: HostColorChoice; label: string }[] = [
   { value: 'w', label: 'White' },
@@ -13,13 +16,20 @@ const COLOR_OPTIONS: { value: HostColorChoice; label: string }[] = [
   { value: 'random', label: 'Random' },
 ]
 
+function sanitizeName(raw: string) {
+  return raw.trim().slice(0, MAX_NAME_LEN)
+}
+
 export function LobbyPanel({ code }: Props) {
   const router = useRouter()
   const { state, youId, error, connected, send } = useRoom(code)
   const [copied, setCopied] = useState(false)
   const [hostColor, setHostColor] = useState<HostColorChoice>('random')
+  const [pseudo, setPseudo] = useState('')
+  const restoredName = useRef(false)
 
   const isHost = state?.hostId === youId
+  const isGuest = state?.guestId === youId
   const guestReady = Boolean(state?.guestId)
   const shareUrl =
     typeof window !== 'undefined'
@@ -32,6 +42,16 @@ export function LobbyPanel({ code }: Props) {
     }
   }, [state?.phase, code, router])
 
+  // Restore saved guest name once connected as guest
+  useEffect(() => {
+    if (!isGuest || !connected || restoredName.current) return
+    restoredName.current = true
+    const saved = sanitizeName(sessionStorage.getItem(GUEST_NAME_KEY) ?? '')
+    if (!saved) return
+    setPseudo(saved)
+    void send({ type: 'join', name: saved })
+  }, [isGuest, connected, send])
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(shareUrl)
@@ -40,6 +60,15 @@ export function LobbyPanel({ code }: Props) {
     } catch {
       // ignore
     }
+  }
+
+  function savePseudo(e: FormEvent) {
+    e.preventDefault()
+    const name = sanitizeName(pseudo)
+    if (!name) return
+    sessionStorage.setItem(GUEST_NAME_KEY, name)
+    setPseudo(name)
+    void send({ type: 'join', name })
   }
 
   return (
@@ -77,6 +106,25 @@ export function LobbyPanel({ code }: Props) {
           present={Boolean(state?.guestId)}
         />
       </div>
+
+      {isGuest && (
+        <form onSubmit={savePseudo} className="flex gap-2">
+          <input
+            value={pseudo}
+            onChange={(e) => setPseudo(e.target.value.slice(0, MAX_NAME_LEN))}
+            placeholder="Your nickname"
+            maxLength={MAX_NAME_LEN}
+            className="flex-1 rounded-lg border border-[#3d342c] bg-[#1a1510] px-3 py-2 text-sm text-[#f3efe6] outline-none placeholder:text-[#6b5e50] focus:border-[#c4a35a]"
+          />
+          <button
+            type="submit"
+            disabled={!sanitizeName(pseudo)}
+            className="rounded-lg border border-[#c4a35a] px-3 py-2 text-sm font-semibold text-[#c4a35a] transition enabled:hover:bg-[#c4a35a]/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Set
+          </button>
+        </form>
+      )}
 
       {isHost && (
         <div>
