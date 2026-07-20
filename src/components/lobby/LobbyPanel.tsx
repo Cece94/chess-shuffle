@@ -4,18 +4,13 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRoom } from '@/lib/realtime/use-room'
 import type { HostColorChoice } from '@/lib/realtime/protocol'
+import { ColorChoicePicker } from '@/components/ui/ColorChoicePicker'
 
 type Props = { code: string }
 
 const PLAYER_NAME_KEY = 'chess-shuffle-player-name'
 const LEGACY_GUEST_NAME_KEY = 'chess-shuffle-guest-name'
 const MAX_NAME_LEN = 20
-
-const COLOR_OPTIONS: { value: HostColorChoice; label: string }[] = [
-  { value: 'w', label: 'White' },
-  { value: 'b', label: 'Black' },
-  { value: 'random', label: 'Random' },
-]
 
 function sanitizeName(raw: string) {
   return raw.trim().slice(0, MAX_NAME_LEN)
@@ -139,25 +134,7 @@ export function LobbyPanel({ code }: Props) {
           <p className="mb-2 text-xs uppercase tracking-[0.15em] text-[#9a8b78]">
             Your color
           </p>
-          <div className="grid grid-cols-3 gap-2">
-            {COLOR_OPTIONS.map((opt) => {
-              const active = hostColor === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setHostColor(opt.value)}
-                  className={`rounded-lg border px-3 py-2 text-sm transition ${
-                    active
-                      ? 'border-[#c4a35a] bg-[#c4a35a]/15 text-[#f3efe6]'
-                      : 'border-[#3d342c] text-[#9a8b78] hover:border-[#6a5c4c]'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
+          <ColorChoicePicker value={hostColor} onChange={setHostColor} />
         </div>
       )}
 

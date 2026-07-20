@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Board2D } from '@/components/board/Board2D'
 import { BoardShell } from '@/components/board/BoardShell'
-import { MaterialMeter } from '@/components/ui/MaterialMeter'
+import { BoardStage } from '@/components/ui/BoardStage'
+import { ResignConfirmDialog } from '@/components/ui/ResignConfirmDialog'
 import { playCaptureSound, playCheckSound, playMoveSound } from '@/lib/audio/move-sound'
 import { wasCapture } from '@/lib/chess/engine'
 import { useRoom } from '@/lib/realtime/use-room'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { useGameUiStore } from '@/store/gameUiStore'
 import type { ChessMove, Color } from '@/lib/chess/types'
 
@@ -20,9 +22,16 @@ export function GameClient({ code }: Props) {
   const resetViewCamera = useGameUiStore((s) => s.resetViewCamera)
   const viewMode = useGameUiStore((s) => s.viewMode)
   const setViewMode = useGameUiStore((s) => s.setViewMode)
+  const isMobile = useIsMobile()
+  const effectiveView = isMobile ? '2d' : viewMode
+  const [confirmResign, setConfirmResign] = useState(false)
   const skipMoveSound = useRef(true)
   const prevFenRef = useRef<string | null>(null)
   const lastSoundKey = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (isMobile && viewMode === '3d') setViewMode('2d')
+  }, [isMobile, viewMode, setViewMode])
 
   useEffect(() => {
     if (state?.phase === 'lobby' && !state.fen) {
@@ -107,9 +116,11 @@ export function GameClient({ code }: Props) {
 
   return (
     <div className="absolute inset-0 bg-[#6e7682]">
-      <div className="absolute inset-0" key={boardKey}>
-        {viewMode === '3d' ? <BoardShell {...boardProps} /> : <Board2D {...boardProps} />}
-      </div>
+      <BoardStage fen={state.fen} immersive={effectiveView === '3d'}>
+        <div className="h-full w-full" key={boardKey}>
+          {effectiveView === '3d' ? <BoardShell {...boardProps} /> : <Board2D {...boardProps} />}
+        </div>
+      </BoardStage>
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3 sm:p-4">
         <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 backdrop-blur-sm">
@@ -118,27 +129,29 @@ export function GameClient({ code }: Props) {
           </h1>
         </div>
 
-        <div
-          className="pointer-events-auto flex rounded-lg border border-[#3d342c] bg-[#1a1510]/80 p-0.5 backdrop-blur-sm"
-          role="group"
-          aria-label="Board view"
-        >
-          {(['2d', '3d'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setViewMode(mode)}
-              aria-pressed={viewMode === mode}
-              className={`rounded-md px-3 py-1.5 text-sm uppercase tracking-wide transition-colors ${
-                viewMode === mode
-                  ? 'bg-[#c4a35a] font-semibold text-[#1a1510]'
-                  : 'text-[#9a8b78] hover:text-[#f3efe6]'
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
+        {!isMobile && (
+          <div
+            className="pointer-events-auto flex rounded-lg border border-[#3d342c] bg-[#1a1510]/80 p-0.5 backdrop-blur-sm"
+            role="group"
+            aria-label="Board view"
+          >
+            {(['2d', '3d'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                aria-pressed={viewMode === mode}
+                className={`rounded-md px-3 py-1.5 text-sm uppercase tracking-wide transition-colors ${
+                  viewMode === mode
+                    ? 'bg-[#c4a35a] font-semibold text-[#1a1510]'
+                    : 'text-[#9a8b78] hover:text-[#f3efe6]'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 text-right text-sm text-[#9a8b78] backdrop-blur-sm">
           <p>
@@ -159,7 +172,7 @@ export function GameClient({ code }: Props) {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-2 p-3 sm:p-4">
         <div className="pointer-events-auto flex flex-wrap gap-2">
-          {viewMode === '3d' && (
+          {effectiveView === '3d' && (
             <button
               type="button"
               onClick={resetViewCamera}
@@ -187,7 +200,7 @@ export function GameClient({ code }: Props) {
           {state.phase === 'playing' && (
             <button
               type="button"
-              onClick={() => void send({ type: 'resign' })}
+              onClick={() => setConfirmResign(true)}
               className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm hover:border-red-400 hover:text-red-300"
             >
               Resign
@@ -201,10 +214,9 @@ export function GameClient({ code }: Props) {
             Back to lobby
           </button>
         </div>
-        <div className="ml-auto flex flex-col items-end gap-2">
-          {error && <p className="rounded-lg bg-[#1a1510]/80 px-3 py-2 text-sm text-red-400">{error}</p>}
-          <MaterialMeter fen={state.fen} />
-        </div>
+        {error && (
+          <p className="rounded-lg bg-[#1a1510]/80 px-3 py-2 text-sm text-red-400">{error}</p>
+        )}
       </div>
 
       {state.phase === 'finished' && (
@@ -229,6 +241,15 @@ export function GameClient({ code }: Props) {
           </div>
         </div>
       )}
+
+      <ResignConfirmDialog
+        open={confirmResign}
+        onCancel={() => setConfirmResign(false)}
+        onConfirm={() => {
+          setConfirmResign(false)
+          void send({ type: 'resign' })
+        }}
+      />
     </div>
   )
 }

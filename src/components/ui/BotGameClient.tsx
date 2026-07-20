@@ -4,12 +4,17 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Board2D } from '@/components/board/Board2D'
 import { BoardShell } from '@/components/board/BoardShell'
-import { MaterialMeter } from '@/components/ui/MaterialMeter'
+import { BoardStage } from '@/components/ui/BoardStage'
 import { playCaptureSound, playCheckSound, playMoveSound } from '@/lib/audio/move-sound'
 import { wasCapture } from '@/lib/chess/engine'
 import type { BotLevel } from '@/lib/chess/bot'
+import { botLevelLabel } from '@/lib/chess/bot'
 import type { HostColorChoice } from '@/hooks/useBotGame'
 import { useBotGame } from '@/hooks/useBotGame'
+import { useIsMobile } from '@/hooks/useIsMobile'
+import { BotFace } from '@/components/ui/BotFace'
+import { ColorChoicePicker } from '@/components/ui/ColorChoicePicker'
+import { ResignConfirmDialog } from '@/components/ui/ResignConfirmDialog'
 import { useGameUiStore } from '@/store/gameUiStore'
 import type { ChessMove, Color } from '@/lib/chess/types'
 
@@ -20,12 +25,16 @@ const LEVELS: { value: BotLevel; label: string; blurb: string }[] = [
     label: 'Intermediate',
     blurb: 'Looks 1–2 moves ahead',
   },
-]
-
-const COLOR_OPTIONS: { value: HostColorChoice; label: string }[] = [
-  { value: 'w', label: 'White' },
-  { value: 'b', label: 'Black' },
-  { value: 'random', label: 'Random' },
+  {
+    value: 'hard',
+    label: 'Hard',
+    blurb: 'Deeper search + capture tactics',
+  },
+  {
+    value: 'expert',
+    label: 'Expert',
+    blurb: 'Looks further — last step before Extreme',
+  },
 ]
 
 export function BotGameClient() {
@@ -34,9 +43,17 @@ export function BotGameClient() {
   const resetViewCamera = useGameUiStore((s) => s.resetViewCamera)
   const viewMode = useGameUiStore((s) => s.viewMode)
   const setViewMode = useGameUiStore((s) => s.setViewMode)
+  const isMobile = useIsMobile()
+  // Mobile: 2D only
+  const effectiveView = isMobile ? '2d' : viewMode
+  const [confirmResign, setConfirmResign] = useState(false)
   const skipMoveSound = useRef(true)
   const prevFenRef = useRef<string | null>(null)
   const lastSoundKey = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (isMobile && viewMode === '3d') setViewMode('2d')
+  }, [isMobile, viewMode, setViewMode])
 
   useEffect(() => {
     clearSelection()
@@ -86,7 +103,7 @@ export function BotGameClient() {
     return <BotSetup onStart={start} />
   }
 
-  if (!state.fen || !state.playerColor) {
+  if (!state.fen || !state.playerColor || !state.bot) {
     return (
       <div className="flex h-full items-center justify-center bg-[#6e7682] text-[#d8dde4]">
         Loading game…
@@ -111,41 +128,73 @@ export function BotGameClient() {
 
   return (
     <div className="absolute inset-0 bg-[#6e7682]">
-      <div className="absolute inset-0" key={boardKey}>
-        {viewMode === '3d' ? <BoardShell {...boardProps} /> : <Board2D {...boardProps} />}
-      </div>
+      <BoardStage
+        fen={state.fen}
+        immersive={effectiveView === '3d'}
+        leftSlot={
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-1">
+              <BotFace
+                name={state.bot.name}
+                accent={state.bot.accent}
+                level={state.level}
+                thinking={state.botThinking}
+              />
+              <p className="text-[10px] uppercase tracking-wider text-[#9a8b78]">
+                {botLevelLabel(state.level)}
+              </p>
+            </div>
+
+            <p className="font-serif text-sm tracking-[0.2em] text-[#c4a35a] sm:text-base">
+              VS
+            </p>
+
+            <div className="rounded-xl border border-[#3d342c]/80 bg-[#1a1510]/80 px-3 py-2 text-center backdrop-blur-sm">
+              <p className="truncate font-serif text-sm text-[#f3efe6] sm:text-base">
+                {state.playerName}
+              </p>
+              <p className="text-[10px] uppercase tracking-wider text-[#9a8b78]">
+                {myColor === 'w' ? 'White' : 'Black'}
+              </p>
+            </div>
+          </div>
+        }
+      >
+        <div className="h-full w-full" key={boardKey}>
+          {effectiveView === '3d' ? <BoardShell {...boardProps} /> : <Board2D {...boardProps} />}
+        </div>
+      </BoardStage>
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3 sm:p-4">
         <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 backdrop-blur-sm">
           <h1 className="font-serif text-lg text-[#f3efe6] sm:text-xl">
             Position #{state.spId ?? '—'}
           </h1>
-          <p className="text-xs text-[#9a8b78]">
-            vs Bot · {state.level === 'easy' ? 'Easy' : 'Intermediate'}
-          </p>
         </div>
 
-        <div
-          className="pointer-events-auto flex rounded-lg border border-[#3d342c] bg-[#1a1510]/80 p-0.5 backdrop-blur-sm"
-          role="group"
-          aria-label="Board view"
-        >
-          {(['2d', '3d'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setViewMode(mode)}
-              aria-pressed={viewMode === mode}
-              className={`rounded-md px-3 py-1.5 text-sm uppercase tracking-wide transition-colors ${
-                viewMode === mode
-                  ? 'bg-[#c4a35a] font-semibold text-[#1a1510]'
-                  : 'text-[#9a8b78] hover:text-[#f3efe6]'
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
+        {!isMobile && (
+          <div
+            className="pointer-events-auto flex rounded-lg border border-[#3d342c] bg-[#1a1510]/80 p-0.5 backdrop-blur-sm"
+            role="group"
+            aria-label="Board view"
+          >
+            {(['2d', '3d'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                aria-pressed={viewMode === mode}
+                className={`rounded-md px-3 py-1.5 text-sm uppercase tracking-wide transition-colors ${
+                  viewMode === mode
+                    ? 'bg-[#c4a35a] font-semibold text-[#1a1510]'
+                    : 'text-[#9a8b78] hover:text-[#f3efe6]'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 text-right text-sm text-[#9a8b78] backdrop-blur-sm">
           <p>
@@ -153,13 +202,6 @@ export function BotGameClient() {
             <span className="text-[#f3efe6]">
               {state.turn === 'w' ? 'White' : 'Black'}
               {state.isCheck ? ' · Check' : ''}
-              {state.botThinking ? ' · Bot…' : ''}
-            </span>
-          </p>
-          <p>
-            You:{' '}
-            <span className="text-[#f3efe6]">
-              {myColor === 'w' ? 'White' : 'Black'}
             </span>
           </p>
         </div>
@@ -167,7 +209,7 @@ export function BotGameClient() {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-2 p-3 sm:p-4">
         <div className="pointer-events-auto flex flex-wrap gap-2">
-          {viewMode === '3d' && (
+          {effectiveView === '3d' && (
             <button
               type="button"
               onClick={resetViewCamera}
@@ -181,7 +223,7 @@ export function BotGameClient() {
           {state.phase === 'playing' && (
             <button
               type="button"
-              onClick={resign}
+              onClick={() => setConfirmResign(true)}
               className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm hover:border-red-400 hover:text-red-300"
             >
               Resign
@@ -190,19 +232,16 @@ export function BotGameClient() {
           <button
             type="button"
             onClick={backToSetup}
-            className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm"
+            className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm hover:border-[#c4a35a]/50 hover:text-[#f3efe6]"
           >
             Change bot
           </button>
           <Link
             href="/"
-            className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm"
+            className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm hover:border-[#c4a35a]/50 hover:text-[#f3efe6]"
           >
             Home
           </Link>
-        </div>
-        <div className="ml-auto flex flex-col items-end gap-2">
-          <MaterialMeter fen={state.fen} />
         </div>
       </div>
 
@@ -214,20 +253,20 @@ export function BotGameClient() {
                 ? 'Draw'
                 : state.winner === myColor
                   ? 'You win'
-                  : 'Bot wins'}
+                  : `${state.bot.name} wins`}
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               <button
                 type="button"
                 onClick={rematch}
-                className="rounded-lg bg-[#c4a35a] px-5 py-2 font-semibold text-[#1a1510]"
+                className="rounded-lg bg-[#c4a35a] px-5 py-2 font-semibold text-[#1a1510] transition-colors hover:bg-[#d4b56a]"
               >
                 Rematch (new shuffle)
               </button>
               <button
                 type="button"
                 onClick={backToSetup}
-                className="rounded-lg border border-[#3d342c] px-5 py-2 text-[#9a8b78]"
+                className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-5 py-2 text-sm text-[#9a8b78] backdrop-blur-sm hover:border-[#c4a35a]/50 hover:text-[#f3efe6]"
               >
                 Change bot
               </button>
@@ -235,6 +274,15 @@ export function BotGameClient() {
           </div>
         </div>
       )}
+
+      <ResignConfirmDialog
+        open={confirmResign}
+        onCancel={() => setConfirmResign(false)}
+        onConfirm={() => {
+          setConfirmResign(false)
+          resign()
+        }}
+      />
     </div>
   )
 }
@@ -288,25 +336,7 @@ function BotSetup({
           <p className="mb-2 text-xs uppercase tracking-[0.15em] text-[#9a8b78]">
             Your color
           </p>
-          <div className="grid grid-cols-3 gap-2">
-            {COLOR_OPTIONS.map((opt) => {
-              const active = color === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setColor(opt.value)}
-                  className={`rounded-lg border px-3 py-2 text-sm transition ${
-                    active
-                      ? 'border-[#c4a35a] bg-[#c4a35a]/15 text-[#f3efe6]'
-                      : 'border-[#3d342c] text-[#9a8b78] hover:border-[#6a5c4c]'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
+          <ColorChoicePicker value={color} onChange={setColor} />
         </div>
 
         <button

@@ -3,6 +3,8 @@ import {
   evaluateFen,
   pickBotMove,
   pickEasyMove,
+  pickExpertMove,
+  pickHardMove,
   pickIntermediateMove,
 } from './bot'
 import { getLegalMoves, tryMove } from './engine'
@@ -28,8 +30,6 @@ describe('pickEasyMove', () => {
 
 describe('pickIntermediateMove', () => {
   it('takes a free hanging queen when obvious', () => {
-    // Black queen on d4 unprotected; white to move can take with pawn e3? 
-    // Simpler: white knight can take unprotected black queen
     const fen = '4k3/8/8/8/3q4/8/4N3/4K3 w - - 0 1'
     const move = pickIntermediateMove(fen)
     expect(move).not.toBeNull()
@@ -45,6 +45,40 @@ describe('pickIntermediateMove', () => {
   })
 })
 
+describe('pickHardMove', () => {
+  it('takes a free hanging queen', () => {
+    const fen = '4k3/8/8/8/3q4/8/4N3/4K3 w - - 0 1'
+    const move = pickHardMove(fen)
+    expect(move).not.toBeNull()
+    expect(move!.from).toBe('e2')
+    expect(move!.to).toBe('d4')
+  })
+
+  it('prefers capturing a hanging rook', () => {
+    const fen = 'r3k3/8/8/8/8/8/8/Q3K3 w - - 0 1'
+    const move = pickHardMove(fen)
+    expect(move).not.toBeNull()
+    expect(move!.to).toBe('a8')
+  })
+})
+
+describe('pickExpertMove', () => {
+  it('takes a free hanging queen', () => {
+    const fen = '4k3/8/8/8/3q4/8/4N3/4K3 w - - 0 1'
+    const move = pickExpertMove(fen)
+    expect(move).not.toBeNull()
+    expect(move!.from).toBe('e2')
+    expect(move!.to).toBe('d4')
+  })
+
+  it('returns a legal move on shuffled starts', () => {
+    const fen = fenFromSpId(42)
+    const move = pickBotMove(fen, 'expert')
+    expect(move).not.toBeNull()
+    expect(tryMove(fen, move!).ok).toBe(true)
+  }, 15_000)
+})
+
 describe('evaluateFen', () => {
   it('is roughly equal at the start', () => {
     const score = evaluateFen(START, 'w')
@@ -52,7 +86,6 @@ describe('evaluateFen', () => {
   })
 
   it('favors the side that is ahead in material', () => {
-    // Black missing a7 pawn
     const fen = 'rnbqkbnr/1ppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
     expect(evaluateFen(fen, 'w')).toBeGreaterThan(0)
     expect(evaluateFen(fen, 'b')).toBeLessThan(0)

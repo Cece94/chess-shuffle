@@ -5,29 +5,51 @@ import { advantageFor, getMaterialScore } from '@/lib/chess/material'
 
 type Props = { fen: string }
 
-/** Bottom-right material advantage (+N for the side ahead). */
+/**
+ * Flat modern material strip — glued to the board’s right side via BoardStage.
+ * Disc = side; gold +N = who is ahead.
+ */
 export function MaterialMeter({ fen }: Props) {
   const score = useMemo(() => getMaterialScore(fen), [fen])
   const whiteAdv = advantageFor('w', score)
   const blackAdv = advantageFor('b', score)
 
   return (
-    <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 text-sm backdrop-blur-sm">
-      <p className="mb-1 text-[10px] uppercase tracking-[0.2em] text-[#9a8b78]">Material</p>
-      <div className="flex flex-col gap-0.5 text-[#f3efe6]">
-        <Row label="White" advantage={whiteAdv} />
-        <Row label="Black" advantage={blackAdv} />
-      </div>
+    <div className="flex flex-col gap-1.5" aria-label="Material advantage">
+      <SidePill side="w" advantage={whiteAdv} />
+      <SidePill side="b" advantage={blackAdv} />
     </div>
   )
 }
 
-function Row({ label, advantage }: { label: string; advantage: number }) {
+function SidePill({ side, advantage }: { side: 'w' | 'b'; advantage: number }) {
+  const ahead = advantage > 0
+  const isWhite = side === 'w'
+
   return (
-    <div className="flex min-w-[7.5rem] items-center justify-between gap-4">
-      <span className="text-[#9a8b78]">{label}</span>
-      <span className={advantage > 0 ? 'font-semibold text-[#c4a35a]' : 'text-[#6b5e50]'}>
-        {advantage > 0 ? `+${advantage}` : '—'}
+    <div
+      className={`flex items-center gap-2 rounded-full px-2.5 py-1.5 transition-opacity ${
+        ahead
+          ? 'bg-[#1a1510] ring-1 ring-[#c4a35a]/70'
+          : 'bg-[#1a1510]/40 opacity-40'
+      }`}
+      aria-label={
+        ahead
+          ? `${isWhite ? 'White' : 'Black'} ahead by ${advantage}`
+          : `${isWhite ? 'White' : 'Black'}`
+      }
+    >
+      <span
+        className={`h-3 w-3 shrink-0 rounded-full ${
+          isWhite ? 'bg-[#f3efe6]' : 'border border-[#9a8b78] bg-[#12100e]'
+        }`}
+      />
+      <span
+        className={`min-w-[1.75rem] text-right font-serif text-lg leading-none tabular-nums ${
+          ahead ? 'text-[#c4a35a]' : 'text-transparent'
+        }`}
+      >
+        {ahead ? `+${advantage}` : '0'}
       </span>
     </div>
   )

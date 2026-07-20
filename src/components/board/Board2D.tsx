@@ -152,10 +152,10 @@ export function Board2D({ fen, orientation, interactive, lastMove, onMove, myCol
   }, [orientation])
 
   return (
-    <div className="flex h-full w-full items-center justify-center p-3 sm:p-6">
+    <div className="h-full w-full">
       <div
         ref={boardRef}
-        className="relative aspect-square w-full max-w-[min(100%,100dvh-8rem)] overflow-hidden rounded-sm shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+        className="relative h-full w-full overflow-hidden"
         style={{
           background: 'linear-gradient(145deg, #8a919c 0%, #6e7682 45%, #5a616c 100%)',
         }}
