@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getLegalMoves, getPieces, type BoardPiece } from '@/lib/chess/engine'
+import { getLegalMoves, getPieces, snapshotFromFen, type BoardPiece } from '@/lib/chess/engine'
 import { squareToWorld, isLightSquare } from '@/lib/chess/coords'
 import { useGameUiStore } from '@/store/gameUiStore'
 import { PieceMesh } from './PieceMesh'
@@ -44,6 +44,7 @@ function findCapturedPiece(
 
 export function Scene({ fen, interactive, lastMove, onMove, myColor }: SceneProps) {
   const pieces = useMemo(() => getPieces(fen), [fen])
+  const snap = useMemo(() => snapshotFromFen(fen), [fen])
   const selectedSquare = useGameUiStore((s) => s.selectedSquare)
   const legalTargets = useGameUiStore((s) => s.legalTargets)
   const setSelection = useGameUiStore((s) => s.setSelection)
@@ -52,6 +53,12 @@ export function Scene({ fen, interactive, lastMove, onMove, myColor }: SceneProp
   const prevPiecesRef = useRef<BoardPiece[]>(pieces)
   const lastAnimKey = useRef<string | null>(null)
   const [flyaways, setFlyaways] = useState<FlyawaySpec[]>([])
+
+  // King to move is the one under check
+  const checkedKingSquare = useMemo(() => {
+    if (!snap.isCheck) return null
+    return pieces.find((p) => p.type === 'k' && p.color === snap.turn)?.square ?? null
+  }, [snap.isCheck, snap.turn, pieces])
 
   // Spawn a kick flyaway whenever a capture appears in lastMove
   useEffect(() => {
@@ -88,7 +95,7 @@ export function Scene({ fen, interactive, lastMove, onMove, myColor }: SceneProp
     prevPiecesRef.current = pieces
   }, [fen, lastMove, pieces])
 
-  const turn = fen.split(' ')[1] as Color
+  const turn = snap.turn
 
   function handleSquareClick(square: string) {
     if (!interactive) return
@@ -136,11 +143,13 @@ export function Scene({ fen, interactive, lastMove, onMove, myColor }: SceneProp
           const target = legalTargets.includes(square)
           const inLast =
             lastMove && (lastMove.from === square || lastMove.to === square)
+          const inCheck = checkedKingSquare === square
 
           let color = light ? '#d7c4a3' : '#6b4f35'
           if (inLast) color = light ? '#e0d08a' : '#8a6b2f'
           if (selected) color = '#c4a35a'
           if (target) color = light ? '#9cbf7a' : '#5f8a4a'
+          if (inCheck) color = light ? '#e07070' : '#a03030'
 
           return (
             <mesh
@@ -168,6 +177,7 @@ export function Scene({ fen, interactive, lastMove, onMove, myColor }: SceneProp
           color={p.color}
           square={p.square}
           selected={selectedSquare === p.square}
+          inCheck={checkedKingSquare === p.square}
           onSelect={() => handleSquareClick(p.square)}
         />
       ))}

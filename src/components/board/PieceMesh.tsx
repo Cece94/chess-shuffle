@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
-import { DoubleSide } from 'three'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { DoubleSide, type Mesh, type MeshBasicMaterial } from 'three'
 import { squareToWorld } from '@/lib/chess/coords'
 import type { Color, PieceSymbol } from '@/lib/chess/types'
 import {
@@ -26,7 +27,47 @@ type PieceMeshProps = {
   color: Color
   square: string
   selected: boolean
+  inCheck?: boolean
   onSelect: () => void
+}
+
+/** Pulsing red ring under a checked king. */
+function CheckHalo() {
+  const ringRef = useRef<Mesh>(null)
+  const discRef = useRef<Mesh>(null)
+
+  useFrame(({ clock }) => {
+    const t = 0.4 + Math.sin(clock.elapsedTime * 3.2) * 0.18
+    const ring = ringRef.current?.material as MeshBasicMaterial | undefined
+    const disc = discRef.current?.material as MeshBasicMaterial | undefined
+    if (ring) ring.opacity = t
+    if (disc) disc.opacity = t * 0.45
+  })
+
+  return (
+    <group>
+      <mesh ref={discRef} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.48, 48]} />
+        <meshBasicMaterial
+          color="#ff2a2a"
+          transparent
+          opacity={0.2}
+          depthWrite={false}
+          side={DoubleSide}
+        />
+      </mesh>
+      <mesh ref={ringRef} position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.3, 0.52, 48]} />
+        <meshBasicMaterial
+          color="#ff1a1a"
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+          side={DoubleSide}
+        />
+      </mesh>
+    </group>
+  )
 }
 
 /** Piece body only — used on the board and for capture flyaways. */
@@ -57,7 +98,14 @@ export function PieceVisual({ type, color }: { type: PieceSymbol; color: Color }
   )
 }
 
-export function PieceMesh({ type, color, square, selected, onSelect }: PieceMeshProps) {
+export function PieceMesh({
+  type,
+  color,
+  square,
+  selected,
+  inCheck = false,
+  onSelect,
+}: PieceMeshProps) {
   const [x, , z] = squareToWorld(square)
   const lift = selected ? 0.18 : 0
 
@@ -69,6 +117,7 @@ export function PieceMesh({ type, color, square, selected, onSelect }: PieceMesh
         onSelect()
       }}
     >
+      {inCheck && <CheckHalo />}
       <PieceVisual type={type} color={color} />
     </group>
   )

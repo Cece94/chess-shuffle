@@ -3,13 +3,21 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useRoom } from '@/lib/realtime/use-room'
+import type { HostColorChoice } from '@/lib/realtime/protocol'
 
 type Props = { code: string }
+
+const COLOR_OPTIONS: { value: HostColorChoice; label: string }[] = [
+  { value: 'w', label: 'White' },
+  { value: 'b', label: 'Black' },
+  { value: 'random', label: 'Random' },
+]
 
 export function LobbyPanel({ code }: Props) {
   const router = useRouter()
   const { state, youId, error, connected, send } = useRoom(code)
   const [copied, setCopied] = useState(false)
+  const [hostColor, setHostColor] = useState<HostColorChoice>('random')
 
   const isHost = state?.hostId === youId
   const guestReady = Boolean(state?.guestId)
@@ -57,18 +65,45 @@ export function LobbyPanel({ code }: Props) {
 
       <div className="space-y-2 text-sm">
         <PlayerRow
-          label="Host (White)"
+          label="Host"
           name={state?.hostName}
           you={state?.hostId === youId}
           present={Boolean(state?.hostId)}
         />
         <PlayerRow
-          label="Guest (Black)"
+          label="Guest"
           name={state?.guestName}
           you={state?.guestId === youId}
           present={Boolean(state?.guestId)}
         />
       </div>
+
+      {isHost && (
+        <div>
+          <p className="mb-2 text-xs uppercase tracking-[0.15em] text-[#9a8b78]">
+            Your color
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {COLOR_OPTIONS.map((opt) => {
+              const active = hostColor === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setHostColor(opt.value)}
+                  className={`rounded-lg border px-3 py-2 text-sm transition ${
+                    active
+                      ? 'border-[#c4a35a] bg-[#c4a35a]/15 text-[#f3efe6]'
+                      : 'border-[#3d342c] text-[#9a8b78] hover:border-[#6a5c4c]'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <p className="text-xs text-[#9a8b78]">
         {connected ? 'Connected' : 'Connecting…'}
@@ -81,7 +116,7 @@ export function LobbyPanel({ code }: Props) {
         <button
           type="button"
           disabled={!guestReady}
-          onClick={() => void send({ type: 'start' })}
+          onClick={() => void send({ type: 'start', hostColor })}
           className="rounded-lg bg-[#c4a35a] px-5 py-3 font-semibold text-[#1a1510] transition enabled:hover:bg-[#d4b56a] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {guestReady ? 'Start game' : 'Waiting for guest…'}

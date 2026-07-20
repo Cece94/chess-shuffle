@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { BoardShell } from '@/components/board/BoardShell'
 import { MaterialMeter } from '@/components/ui/MaterialMeter'
+import { playCaptureSound, playMoveSound } from '@/lib/audio/move-sound'
+import { wasCapture } from '@/lib/chess/engine'
 import { useRoom } from '@/lib/realtime/use-room'
 import { useGameUiStore } from '@/store/gameUiStore'
 import type { Color } from '@/lib/chess/types'
@@ -14,6 +16,9 @@ export function GameClient({ code }: Props) {
   const router = useRouter()
   const { state, youId, error, send } = useRoom(code)
   const clearSelection = useGameUiStore((s) => s.clearSelection)
+  const skipMoveSound = useRef(true)
+  const prevFenRef = useRef<string | null>(null)
+  const lastSoundKey = useRef<string | null>(null)
 
   useEffect(() => {
     if (state?.phase === 'lobby' && !state.fen) {
@@ -24,6 +29,41 @@ export function GameClient({ code }: Props) {
   useEffect(() => {
     clearSelection()
   }, [state?.fen, clearSelection])
+
+  const moveKey = state?.lastMove
+    ? `${state.lastMove.from}${state.lastMove.to}${state.lastMove.promotion ?? ''}`
+    : null
+
+  // Play once per confirmed move (poll/heartbeat must not retrigger)
+  useEffect(() => {
+    if (!state?.fen) return
+
+    if (!moveKey || !state.lastMove) {
+      skipMoveSound.current = false
+      lastSoundKey.current = null
+      prevFenRef.current = state.fen
+      return
+    }
+
+    const soundKey = `${moveKey}|${state.fen}`
+    if (lastSoundKey.current === soundKey) return
+
+    if (skipMoveSound.current) {
+      skipMoveSound.current = false
+      lastSoundKey.current = soundKey
+      prevFenRef.current = state.fen
+      return
+    }
+
+    const before = prevFenRef.current
+    if (before && wasCapture(before, state.lastMove)) {
+      playCaptureSound()
+    } else {
+      playMoveSound()
+    }
+    lastSoundKey.current = soundKey
+    prevFenRef.current = state.fen
+  }, [state?.fen, state?.lastMove, moveKey])
 
   const myColor: Color | null = useMemo(() => {
     if (!state) return null

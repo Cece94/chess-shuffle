@@ -2,8 +2,10 @@ import type * as Party from 'partykit/server'
 import { fenFromSpId, randomSpId } from '../src/lib/chess/shuffle'
 import { snapshotFromFen, tryMove } from '../src/lib/chess/engine'
 import {
+  assignSeatColors,
   emptyRoomState,
   type ClientMessage,
+  type HostColorChoice,
   type RoomState,
   type ServerMessage,
 } from '../src/lib/realtime/protocol'
@@ -106,7 +108,7 @@ export default class ChessRoom implements Party.Server {
         this.broadcastState()
         break
       case 'start':
-        this.handleStart(sender)
+        this.handleStart(sender, msg.hostColor)
         break
       case 'move':
         this.handleMove(sender, msg)
@@ -126,7 +128,7 @@ export default class ChessRoom implements Party.Server {
     }
   }
 
-  private handleStart(sender: Conn) {
+  private handleStart(sender: Conn, hostColor: HostColorChoice = 'random') {
     if (sender.id !== this.state.hostId) {
       this.send(sender, {
         type: 'error',
@@ -163,8 +165,10 @@ export default class ChessRoom implements Party.Server {
     this.state.isCheck = snap.isCheck
     this.state.lastMove = null
     this.state.winner = null
-    this.state.whiteId = this.state.hostId
-    this.state.blackId = this.state.guestId
+
+    const seats = assignSeatColors(this.state.hostId, this.state.guestId, hostColor)
+    this.state.whiteId = seats.whiteId
+    this.state.blackId = seats.blackId
     this.broadcastState()
   }
 
@@ -242,8 +246,25 @@ export default class ChessRoom implements Party.Server {
       })
       return
     }
-    this.state.phase = 'lobby'
-    this.handleStart(sender)
+
+    // Keep seat colors; only reshuffle
+    const whiteId = this.state.whiteId
+    const blackId = this.state.blackId
+
+    const spId = randomSpId()
+    const fen = fenFromSpId(spId)
+    const snap = snapshotFromFen(fen)
+
+    this.state.phase = 'playing'
+    this.state.spId = spId
+    this.state.fen = fen
+    this.state.turn = snap.turn
+    this.state.isCheck = snap.isCheck
+    this.state.lastMove = null
+    this.state.winner = null
+    this.state.whiteId = whiteId
+    this.state.blackId = blackId
+    this.broadcastState()
   }
 
   private send(conn: Party.Connection, msg: ServerMessage) {

@@ -1,8 +1,10 @@
 import { fenFromSpId, randomSpId } from '@/lib/chess/shuffle'
 import { snapshotFromFen, tryMove } from '@/lib/chess/engine'
 import {
+  assignSeatColors,
   emptyRoomState,
   type ClientMessage,
+  type HostColorChoice,
   type RoomState,
 } from '@/lib/realtime/protocol'
 
@@ -49,14 +51,12 @@ export function joinLocalRoom(
   }
 
   // Reclaim seat after brief navigation disconnect
-  if (state.hostId === playerId || state.whiteId === playerId) {
-    state.hostId = playerId
+  if (state.hostId === playerId) {
     state.hostName = name ?? state.hostName ?? 'Host'
     room.players.set(playerId, { id: playerId, name: state.hostName })
     return { state }
   }
-  if (state.guestId === playerId || state.blackId === playerId) {
-    state.guestId = playerId
+  if (state.guestId === playerId) {
     state.guestName = name ?? state.guestName ?? 'Guest'
     room.players.set(playerId, { id: playerId, name: state.guestName })
     return { state }
@@ -98,6 +98,25 @@ export function leaveLocalRoom(code: string, playerId: string): RoomState {
   return state
 }
 
+function beginGame(state: RoomState, hostColor?: HostColorChoice) {
+  const spId = randomSpId()
+  const fen = fenFromSpId(spId)
+  const snap = snapshotFromFen(fen)
+  state.phase = 'playing'
+  state.spId = spId
+  state.fen = fen
+  state.turn = snap.turn
+  state.isCheck = snap.isCheck
+  state.lastMove = null
+  state.winner = null
+
+  if (state.hostId && state.guestId && hostColor !== undefined) {
+    const seats = assignSeatColors(state.hostId, state.guestId, hostColor)
+    state.whiteId = seats.whiteId
+    state.blackId = seats.blackId
+  }
+}
+
 export function applyLocalMessage(
   code: string,
   playerId: string,
@@ -114,7 +133,16 @@ export function applyLocalMessage(
       }
       return { state }
     }
-    case 'start':
+    case 'start': {
+      if (playerId !== state.hostId) {
+        return { state, error: 'Only the host can start the game.' }
+      }
+      if (!state.guestId) {
+        return { state, error: 'Wait for a friend to join.' }
+      }
+      beginGame(state, msg.hostColor ?? 'random')
+      return { state }
+    }
     case 'rematch': {
       if (playerId !== state.hostId) {
         return { state, error: 'Only the host can start the game.' }
@@ -122,18 +150,8 @@ export function applyLocalMessage(
       if (!state.guestId) {
         return { state, error: 'Wait for a friend to join.' }
       }
-      const spId = randomSpId()
-      const fen = fenFromSpId(spId)
-      const snap = snapshotFromFen(fen)
-      state.phase = 'playing'
-      state.spId = spId
-      state.fen = fen
-      state.turn = snap.turn
-      state.isCheck = snap.isCheck
-      state.lastMove = null
-      state.winner = null
-      state.whiteId = state.hostId
-      state.blackId = state.guestId
+      // Keep seat colors; only reshuffle the position
+      beginGame(state)
       return { state }
     }
     case 'move': {

@@ -2,6 +2,9 @@ import type { ChessMove, Color } from '@/lib/chess/types'
 
 export type RoomPhase = 'lobby' | 'playing' | 'finished'
 
+/** Host picks their side; guest gets the other. */
+export type HostColorChoice = 'w' | 'b' | 'random'
+
 export type RoomState = {
   code: string
   phase: RoomPhase
@@ -22,7 +25,7 @@ export type RoomState = {
 
 export type ClientMessage =
   | { type: 'join'; name?: string }
-  | { type: 'start' }
+  | { type: 'start'; hostColor?: HostColorChoice }
   | { type: 'move'; move: ChessMove }
   | { type: 'resign' }
   | { type: 'rematch' }
@@ -49,4 +52,18 @@ export function emptyRoomState(code: string): RoomState {
     isCheck: false,
     createdAt: Date.now(),
   }
+}
+
+/** Assign white/black from the host's color choice. */
+export function assignSeatColors(
+  hostId: string,
+  guestId: string,
+  hostColor: HostColorChoice = 'random',
+): { whiteId: string; blackId: string } {
+  const hostIsWhite =
+    hostColor === 'w' ? true : hostColor === 'b' ? false : Math.random() < 0.5
+
+  return hostIsWhite
+    ? { whiteId: hostId, blackId: guestId }
+    : { whiteId: guestId, blackId: hostId }
 }

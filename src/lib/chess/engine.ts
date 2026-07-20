@@ -69,6 +69,21 @@ export function tryMove(
   }
 }
 
+/** True if `move` captures a piece from `beforeFen` (incl. en passant). */
+export function wasCapture(beforeFen: string, move: ChessMove): boolean {
+  try {
+    const chess = new Chess(beforeFen)
+    const result = chess.move({
+      from: move.from as ChessSquare,
+      to: move.to as ChessSquare,
+      promotion: move.promotion,
+    })
+    return Boolean(result?.captured)
+  } catch {
+    return false
+  }
+}
+
 export function snapshotFromFen(fen: string): EngineSnapshot {
   return snapshotFromChess(new Chess(fen))
 }
