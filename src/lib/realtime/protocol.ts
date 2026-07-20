@@ -23,6 +23,29 @@ export type RoomState = {
   createdAt: number
 }
 
+/** Public lobby card for the home directory. */
+export type LobbySummary = {
+  code: string
+  playerCount: number
+  hostName: string | null
+  createdAt: number
+}
+
+export function roomPlayerCount(state: RoomState): number {
+  return (state.hostId ? 1 : 0) + (state.guestId ? 1 : 0)
+}
+
+export function toLobbySummary(state: RoomState): LobbySummary | null {
+  const playerCount = roomPlayerCount(state)
+  if (state.phase !== 'lobby' || playerCount === 0) return null
+  return {
+    code: state.code,
+    playerCount,
+    hostName: state.hostName,
+    createdAt: state.createdAt,
+  }
+}
+
 export type ClientMessage =
   | { type: 'join'; name?: string }
   | { type: 'start'; hostColor?: HostColorChoice }

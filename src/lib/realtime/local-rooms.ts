@@ -3,8 +3,10 @@ import { snapshotFromFen, tryMove } from '@/lib/chess/engine'
 import {
   assignSeatColors,
   emptyRoomState,
+  toLobbySummary,
   type ClientMessage,
   type HostColorChoice,
+  type LobbySummary,
   type RoomState,
 } from '@/lib/realtime/protocol'
 
@@ -36,6 +38,16 @@ export function getOrCreateLocalRoom(code: string): LocalRoom {
     map.set(key, room)
   }
   return room
+}
+
+/** Open lobbies with at least one player (joinable or full). */
+export function listLocalLobbies(): LobbySummary[] {
+  const out: LobbySummary[] = []
+  for (const room of rooms().values()) {
+    const summary = toLobbySummary(room.state)
+    if (summary) out.push(summary)
+  }
+  return out.sort((a, b) => b.createdAt - a.createdAt)
 }
 
 export function joinLocalRoom(

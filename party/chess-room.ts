@@ -1,19 +1,22 @@
-import { Server, type Connection } from 'partyserver'
+import { getServerByName, Server, type Connection } from 'partyserver'
 import { fenFromSpId, randomSpId } from '../src/lib/chess/shuffle'
 import { snapshotFromFen, tryMove } from '../src/lib/chess/engine'
 import {
   assignSeatColors,
   emptyRoomState,
+  toLobbySummary,
   type ClientMessage,
   type HostColorChoice,
   type RoomState,
   type ServerMessage,
 } from '../src/lib/realtime/protocol'
+import type { LobbyDirectory } from './lobby-directory'
 
 type Conn = Connection<{ role?: 'host' | 'guest' }>
 
 type Env = {
   ChessRoom: DurableObjectNamespace<ChessRoom>
+  LobbyDirectory: DurableObjectNamespace<LobbyDirectory>
 }
 
 export class ChessRoom extends Server<Env> {
@@ -269,6 +272,27 @@ export class ChessRoom extends Server<Env> {
         youId: conn.id,
       }
       conn.send(JSON.stringify(payload))
+    }
+    void this.syncDirectory()
+  }
+
+  /** Keep the public lobby list in sync with this room. */
+  private async syncDirectory() {
+    try {
+      const directory = await getServerByName(this.env.LobbyDirectory, 'global')
+      const summary = toLobbySummary(this.state)
+      const body = summary
+        ? JSON.stringify({ type: 'upsert', lobby: summary })
+        : JSON.stringify({ type: 'remove', code: this.state.code })
+      await directory.fetch(
+        new Request('https://lobby-directory/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        }),
+      )
+    } catch {
+      // Directory is best-effort; room play must keep working
     }
   }
 }

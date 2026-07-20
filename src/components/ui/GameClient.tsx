@@ -189,7 +189,7 @@ export function GameClient({ code }: Props) {
           )}
           <button
             type="button"
-            onClick={() => router.push(`/lobby/${code}`)}
+            onClick={() => router.push('/')}
             className="rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-4 py-2 text-sm text-[#9a8b78] backdrop-blur-sm"
           >
             Back to lobby

@@ -1,5 +1,6 @@
 import { CreateLobbyButton } from '@/components/lobby/CreateLobbyButton'
 import { JoinLobbyForm } from '@/components/lobby/JoinLobbyForm'
+import { LobbyList } from '@/components/lobby/LobbyList'
 
 export default function HomePage() {
   return (
@@ -38,6 +39,10 @@ export default function HomePage() {
             or join
           </div>
           <JoinLobbyForm />
+        </div>
+
+        <div className="rounded-2xl border border-[#3d342c] bg-[#241e18]/80 p-5 text-left backdrop-blur">
+          <LobbyList />
         </div>
       </div>
     </main>

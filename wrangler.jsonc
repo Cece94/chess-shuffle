@@ -7,6 +7,10 @@
       {
         "name": "ChessRoom",
         "class_name": "ChessRoom"
+      },
+      {
+        "name": "LobbyDirectory",
+        "class_name": "LobbyDirectory"
       }
     ]
   },
@@ -14,6 +18,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["ChessRoom"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["LobbyDirectory"]
     }
   ]
 }
