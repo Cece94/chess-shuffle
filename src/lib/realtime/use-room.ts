@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import PartySocket from 'partysocket'
 import type { ClientMessage, RoomState } from '@/lib/realtime/protocol'
 
@@ -46,6 +46,24 @@ function cancelLeave(code: string, playerId: string) {
   }
 }
 
+/** Ignore older snapshots from in-flight polls after rematch/moves. */
+function applyRoomState(
+  setState: Dispatch<SetStateAction<RoomState | null>>,
+  incoming: RoomState,
+) {
+  setState((prev) => {
+    if (
+      prev &&
+      typeof incoming.revision === 'number' &&
+      typeof prev.revision === 'number' &&
+      incoming.revision < prev.revision
+    ) {
+      return prev
+    }
+    return incoming
+  })
+}
+
 export function useRoom(code: string) {
   const [state, setState] = useState<RoomState | null>(null)
   const [youId, setYouId] = useState<string>('')
@@ -73,7 +91,7 @@ export function useRoom(code: string) {
       })
       const data = await res.json()
       if (data.error) setError(data.error)
-      if (data.state) setState(data.state)
+      if (data.state) applyRoomState(setState, data.state)
     },
     [code, partyHost],
   )
@@ -102,7 +120,7 @@ export function useRoom(code: string) {
       socket.addEventListener('message', (event) => {
         const msg = JSON.parse(String(event.data))
         if (msg.type === 'state') {
-          setState(msg.state)
+          applyRoomState(setState, msg.state)
           setYouId(msg.youId)
           setError(null)
         } else if (msg.type === 'error') {
@@ -138,7 +156,7 @@ export function useRoom(code: string) {
       if (cancelled) return
       if (data.error) setError(data.error)
       if (data.state) {
-        setState(data.state)
+        applyRoomState(setState, data.state)
         setConnected(true)
       }
     }
@@ -154,7 +172,7 @@ export function useRoom(code: string) {
         .then((r) => r.json())
         .then((data) => {
           if (!cancelled && data.state) {
-            setState(data.state)
+            applyRoomState(setState, data.state)
             setConnected(true)
           }
         })
@@ -163,7 +181,7 @@ export function useRoom(code: string) {
     const poll = setInterval(async () => {
       const res = await fetch(`/api/room/${code}`)
       const data = await res.json()
-      if (!cancelled && data.state) setState(data.state)
+      if (!cancelled && data.state) applyRoomState(setState, data.state)
     }, 500)
 
     return () => {

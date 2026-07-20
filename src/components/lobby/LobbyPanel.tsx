@@ -7,7 +7,8 @@ import type { HostColorChoice } from '@/lib/realtime/protocol'
 
 type Props = { code: string }
 
-const GUEST_NAME_KEY = 'chess-shuffle-guest-name'
+const PLAYER_NAME_KEY = 'chess-shuffle-player-name'
+const LEGACY_GUEST_NAME_KEY = 'chess-shuffle-guest-name'
 const MAX_NAME_LEN = 20
 
 const COLOR_OPTIONS: { value: HostColorChoice; label: string }[] = [
@@ -20,6 +21,12 @@ function sanitizeName(raw: string) {
   return raw.trim().slice(0, MAX_NAME_LEN)
 }
 
+function readSavedName() {
+  const current = sanitizeName(sessionStorage.getItem(PLAYER_NAME_KEY) ?? '')
+  if (current) return current
+  return sanitizeName(sessionStorage.getItem(LEGACY_GUEST_NAME_KEY) ?? '')
+}
+
 export function LobbyPanel({ code }: Props) {
   const router = useRouter()
   const { state, youId, error, connected, send } = useRoom(code)
@@ -30,6 +37,7 @@ export function LobbyPanel({ code }: Props) {
 
   const isHost = state?.hostId === youId
   const isGuest = state?.guestId === youId
+  const inSeat = isHost || isGuest
   const guestReady = Boolean(state?.guestId)
   const shareUrl =
     typeof window !== 'undefined'
@@ -42,15 +50,15 @@ export function LobbyPanel({ code }: Props) {
     }
   }, [state?.phase, code, router])
 
-  // Restore saved guest name once connected as guest
+  // Restore saved nickname once seated (host or guest)
   useEffect(() => {
-    if (!isGuest || !connected || restoredName.current) return
+    if (!inSeat || !connected || restoredName.current) return
     restoredName.current = true
-    const saved = sanitizeName(sessionStorage.getItem(GUEST_NAME_KEY) ?? '')
+    const saved = readSavedName()
     if (!saved) return
     setPseudo(saved)
     void send({ type: 'join', name: saved })
-  }, [isGuest, connected, send])
+  }, [inSeat, connected, send])
 
   async function copyLink() {
     try {
@@ -66,7 +74,7 @@ export function LobbyPanel({ code }: Props) {
     e.preventDefault()
     const name = sanitizeName(pseudo)
     if (!name) return
-    sessionStorage.setItem(GUEST_NAME_KEY, name)
+    sessionStorage.setItem(PLAYER_NAME_KEY, name)
     setPseudo(name)
     void send({ type: 'join', name })
   }
@@ -107,7 +115,7 @@ export function LobbyPanel({ code }: Props) {
         />
       </div>
 
-      {isGuest && (
+      {inSeat && (
         <form onSubmit={savePseudo} className="flex gap-2">
           <input
             value={pseudo}

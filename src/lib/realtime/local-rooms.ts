@@ -2,6 +2,7 @@ import { fenFromSpId, randomSpId } from '@/lib/chess/shuffle'
 import { snapshotFromFen, tryMove } from '@/lib/chess/engine'
 import {
   assignSeatColors,
+  bumpRevision,
   emptyRoomState,
   toLobbySummary,
   type ClientMessage,
@@ -66,12 +67,12 @@ export function joinLocalRoom(
   if (state.hostId === playerId) {
     state.hostName = name ?? state.hostName ?? 'Host'
     room.players.set(playerId, { id: playerId, name: state.hostName })
-    return { state }
+    return { state: bumpRevision(state) }
   }
   if (state.guestId === playerId) {
     state.guestName = name ?? state.guestName ?? 'Guest'
     room.players.set(playerId, { id: playerId, name: state.guestName })
-    return { state }
+    return { state: bumpRevision(state) }
   }
 
   if (!state.hostId) {
@@ -86,7 +87,7 @@ export function joinLocalRoom(
     return { state, error: 'ROOM_FULL' }
   }
 
-  return { state }
+  return { state: bumpRevision(state) }
 }
 
 /** Soft leave: do not wipe an in-progress game (avoids lobby↔game redirect loops). */
@@ -107,7 +108,7 @@ export function leaveLocalRoom(code: string, playerId: string): RoomState {
     }
   }
 
-  return state
+  return bumpRevision(state)
 }
 
 function beginGame(state: RoomState, hostColor?: HostColorChoice) {
@@ -143,7 +144,7 @@ export function applyLocalMessage(
         if (playerId === state.hostId) state.hostName = msg.name
         if (playerId === state.guestId) state.guestName = msg.name
       }
-      return { state }
+      return { state: bumpRevision(state) }
     }
     case 'start': {
       if (playerId !== state.hostId) {
@@ -153,7 +154,7 @@ export function applyLocalMessage(
         return { state, error: 'Wait for a friend to join.' }
       }
       beginGame(state, msg.hostColor ?? 'random')
-      return { state }
+      return { state: bumpRevision(state) }
     }
     case 'rematch': {
       if (playerId !== state.hostId) {
@@ -162,13 +163,16 @@ export function applyLocalMessage(
       if (!state.guestId) {
         return { state, error: 'Wait for a friend to join.' }
       }
+      if (state.phase !== 'finished') {
+        return { state, error: 'Rematch is only available after a game ends.' }
+      }
       // Swap sides vs previous game, then reshuffle
-      const prevWhite = state.whiteId
-      const prevBlack = state.blackId
+      const nextWhite = state.blackId
+      const nextBlack = state.whiteId
       beginGame(state)
-      state.whiteId = prevBlack
-      state.blackId = prevWhite
-      return { state }
+      state.whiteId = nextWhite
+      state.blackId = nextBlack
+      return { state: bumpRevision(state) }
     }
     case 'move': {
       if (state.phase !== 'playing' || !state.fen) {
@@ -193,7 +197,7 @@ export function applyLocalMessage(
         state.phase = 'finished'
         state.winner = result.snapshot.winner
       }
-      return { state }
+      return { state: bumpRevision(state) }
     }
     case 'resign': {
       if (state.phase !== 'playing') return { state }
@@ -201,7 +205,7 @@ export function applyLocalMessage(
       else if (playerId === state.blackId) state.winner = 'w'
       else return { state }
       state.phase = 'finished'
-      return { state }
+      return { state: bumpRevision(state) }
     }
     default:
       return { state, error: 'Unknown message' }

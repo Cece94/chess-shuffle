@@ -76,7 +76,12 @@ export function GameClient({ code }: Props) {
     if (state.whiteId === youId) return 'w'
     if (state.blackId === youId) return 'b'
     return null
-  }, [state, youId])
+  }, [state?.whiteId, state?.blackId, youId])
+
+  // Flip camera when rematch swaps seats
+  useEffect(() => {
+    if (myColor) resetViewCamera()
+  }, [myColor, resetViewCamera])
 
   const interactive =
     state?.phase === 'playing' && myColor !== null && state.turn === myColor
@@ -98,9 +103,11 @@ export function GameClient({ code }: Props) {
     onMove: (move: ChessMove) => void send({ type: 'move', move }),
   }
 
+  const boardKey = `${state.spId}-${state.whiteId}-${state.blackId}`
+
   return (
     <div className="fixed inset-0 bg-[#6e7682]">
-      <div className="absolute inset-0">
+      <div className="absolute inset-0" key={boardKey}>
         {viewMode === '3d' ? <BoardShell {...boardProps} /> : <Board2D {...boardProps} />}
       </div>
 

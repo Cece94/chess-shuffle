@@ -21,6 +21,8 @@ export type RoomState = {
   winner: Color | 'draw' | null
   isCheck: boolean
   createdAt: number
+  /** Monotonic counter so clients can ignore stale poll responses. */
+  revision: number
 }
 
 /** Public lobby card for the home directory. */
@@ -74,7 +76,13 @@ export function emptyRoomState(code: string): RoomState {
     winner: null,
     isCheck: false,
     createdAt: Date.now(),
+    revision: 0,
   }
+}
+
+export function bumpRevision(state: RoomState): RoomState {
+  state.revision = (state.revision ?? 0) + 1
+  return state
 }
 
 /** Assign white/black from the host's color choice. */

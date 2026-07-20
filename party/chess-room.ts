@@ -3,6 +3,7 @@ import { fenFromSpId, randomSpId } from '../src/lib/chess/shuffle'
 import { snapshotFromFen, tryMove } from '../src/lib/chess/engine'
 import {
   assignSeatColors,
+  bumpRevision,
   emptyRoomState,
   toLobbySummary,
   type ClientMessage,
@@ -239,10 +240,18 @@ export class ChessRoom extends Server<Env> {
       })
       return
     }
+    if (this.state.phase !== 'finished') {
+      this.send(sender, {
+        type: 'error',
+        code: 'BAD_PHASE',
+        message: 'Rematch is only available after a game ends.',
+      })
+      return
+    }
 
     // Swap sides vs previous game, then reshuffle
-    const prevWhite = this.state.whiteId
-    const prevBlack = this.state.blackId
+    const nextWhite = this.state.blackId
+    const nextBlack = this.state.whiteId
 
     const spId = randomSpId()
     const fen = fenFromSpId(spId)
@@ -255,8 +264,8 @@ export class ChessRoom extends Server<Env> {
     this.state.isCheck = snap.isCheck
     this.state.lastMove = null
     this.state.winner = null
-    this.state.whiteId = prevBlack
-    this.state.blackId = prevWhite
+    this.state.whiteId = nextWhite
+    this.state.blackId = nextBlack
     this.broadcastState()
   }
 
@@ -265,6 +274,7 @@ export class ChessRoom extends Server<Env> {
   }
 
   private broadcastState() {
+    bumpRevision(this.state)
     for (const conn of this.getConnections()) {
       const payload: ServerMessage = {
         type: 'state',
