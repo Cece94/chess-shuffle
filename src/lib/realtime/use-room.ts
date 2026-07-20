@@ -85,9 +85,12 @@ export function useRoom(code: string) {
     let cancelled = false
 
     if (partyHost) {
+      // Stable id so reconnect after lobby→game reclaims the same seat
       const socket = new PartySocket({
         host: partyHost,
+        party: 'chess-room',
         room: code.toUpperCase(),
+        id: playerId,
       })
       socketRef.current = socket
 

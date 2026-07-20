@@ -1,0 +1,19 @@
+{
+  "name": "chess-shuffle",
+  "main": "party/index.ts",
+  "compatibility_date": "2024-09-23",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ChessRoom",
+        "class_name": "ChessRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ChessRoom"]
+    }
+  ]
+}

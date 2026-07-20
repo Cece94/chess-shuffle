@@ -26,16 +26,17 @@ Local multiplayer uses an in-memory room API (works in `next dev` on one machine
 | `npm run dev` | Next.js app |
 | `npm test` | Chess960 / engine unit tests |
 | `npm run build` | Production build |
-| `npm run party:dev` | PartyKit realtime server (optional) |
-| `npm run party:deploy` | Deploy PartyKit |
+| `npm run party:dev` | Cloudflare Workers realtime (local) |
+| `npm run party:deploy` | Deploy realtime Worker to Cloudflare |
 
-## PartyKit (Vercel multiplayer)
+## Multiplayer on Vercel (Cloudflare Workers)
 
 In-memory lobbies do **not** survive across Vercel serverless instances. For production realtime:
 
-1. Deploy PartyKit: `npm run party:deploy`
-2. Set on Vercel: `NEXT_PUBLIC_PARTYKIT_HOST=your-project.username.partykit.dev`
-3. Redeploy the Next.js app
+1. `npx wrangler login` (Cloudflare account, free)
+2. `npm run party:deploy` → note the `*.workers.dev` URL
+3. Set on Vercel: `NEXT_PUBLIC_PARTYKIT_HOST=chess-shuffle.<account>.workers.dev` (no `https://`)
+4. Redeploy the Next.js app
 
 Without that env var, the app uses `/api/room/[code]` polling (fine for local demo).
 

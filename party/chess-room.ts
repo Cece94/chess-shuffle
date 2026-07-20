@@ -1,4 +1,4 @@
-import type * as Party from 'partykit/server'
+import { Server, type Connection } from 'partyserver'
 import { fenFromSpId, randomSpId } from '../src/lib/chess/shuffle'
 import { snapshotFromFen, tryMove } from '../src/lib/chess/engine'
 import {
@@ -10,16 +10,33 @@ import {
   type ServerMessage,
 } from '../src/lib/realtime/protocol'
 
-type Conn = Party.Connection<{ role?: 'host' | 'guest' }>
+type Conn = Connection<{ role?: 'host' | 'guest' }>
 
-export default class ChessRoom implements Party.Server {
+type Env = {
+  ChessRoom: DurableObjectNamespace<ChessRoom>
+}
+
+export class ChessRoom extends Server<Env> {
   state: RoomState
 
-  constructor(readonly room: Party.Room) {
-    this.state = emptyRoomState(room.id.toUpperCase())
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env)
+    this.state = emptyRoomState(this.name.toUpperCase())
   }
 
   onConnect(conn: Conn) {
+    // Reclaim seat after lobby→game navigation (same stable client id)
+    if (this.state.hostId === conn.id) {
+      conn.setState({ role: 'host' })
+      this.broadcastState()
+      return
+    }
+    if (this.state.guestId === conn.id) {
+      conn.setState({ role: 'guest' })
+      this.broadcastState()
+      return
+    }
+
     // First connection is host; second is guest; extras rejected
     if (!this.state.hostId) {
       this.state.hostId = conn.id
@@ -42,54 +59,27 @@ export default class ChessRoom implements Party.Server {
     this.broadcastState()
   }
 
+  // Soft leave: keep in-progress games (socket closes on every lobby→game route change)
   onClose(conn: Conn) {
-    if (this.state.hostId === conn.id) {
-      this.state.hostId = this.state.guestId
-      this.state.hostName = this.state.guestName
-      this.state.guestId = null
-      this.state.guestName = null
-      if (this.state.phase === 'playing') {
-        this.state.phase = 'finished'
-        this.state.winner =
-          this.state.whiteId === conn.id
-            ? 'b'
-            : this.state.blackId === conn.id
-              ? 'w'
-              : this.state.winner
+    if (this.state.phase === 'lobby') {
+      if (this.state.hostId === conn.id) {
+        this.state.hostId = this.state.guestId
+        this.state.hostName = this.state.guestName
+        this.state.guestId = null
+        this.state.guestName = null
+      } else if (this.state.guestId === conn.id) {
+        this.state.guestId = null
+        this.state.guestName = null
       }
-    } else if (this.state.guestId === conn.id) {
-      this.state.guestId = null
-      this.state.guestName = null
-      if (this.state.phase === 'playing') {
-        this.state.phase = 'finished'
-        this.state.winner =
-          this.state.whiteId === conn.id
-            ? 'b'
-            : this.state.blackId === conn.id
-              ? 'w'
-              : this.state.winner
-      }
-    }
-
-    if (this.state.phase !== 'playing') {
-      this.state.phase = 'lobby'
-      this.state.spId = null
-      this.state.fen = null
-      this.state.turn = null
-      this.state.lastMove = null
-      this.state.whiteId = null
-      this.state.blackId = null
-      this.state.winner = null
-      this.state.isCheck = false
     }
 
     this.broadcastState()
   }
 
-  onMessage(message: string, sender: Conn) {
+  onMessage(sender: Conn, message: string | ArrayBuffer) {
     let msg: ClientMessage
     try {
-      msg = JSON.parse(message) as ClientMessage
+      msg = JSON.parse(String(message)) as ClientMessage
     } catch {
       this.send(sender, {
         type: 'error',
@@ -267,12 +257,12 @@ export default class ChessRoom implements Party.Server {
     this.broadcastState()
   }
 
-  private send(conn: Party.Connection, msg: ServerMessage) {
+  private send(conn: Connection, msg: ServerMessage) {
     conn.send(JSON.stringify(msg))
   }
 
   private broadcastState() {
-    for (const conn of this.room.getConnections()) {
+    for (const conn of this.getConnections()) {
       const payload: ServerMessage = {
         type: 'state',
         state: this.state,
@@ -282,5 +272,3 @@ export default class ChessRoom implements Party.Server {
     }
   }
 }
-
-ChessRoom satisfies Party.Worker
