@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Board2D } from '@/components/board/Board2D'
 import { BoardShell } from '@/components/board/BoardShell'
@@ -14,6 +14,7 @@ import { useBotGame } from '@/hooks/useBotGame'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { BotFace } from '@/components/ui/BotFace'
 import { ColorChoicePicker } from '@/components/ui/ColorChoicePicker'
+import { MaterialInline } from '@/components/ui/MaterialMeter'
 import { ResignConfirmDialog } from '@/components/ui/ResignConfirmDialog'
 import { useGameUiStore } from '@/store/gameUiStore'
 import type { ChessMove, Color } from '@/lib/chess/types'
@@ -112,6 +113,7 @@ export function BotGameClient() {
   }
 
   const myColor = state.playerColor
+  const botColor: Color = myColor === 'w' ? 'b' : 'w'
   const interactive =
     state.phase === 'playing' && state.turn === myColor && !state.botThinking
 
@@ -126,38 +128,69 @@ export function BotGameClient() {
 
   const boardKey = `${state.spId}-${myColor}`
 
+  const desktopMatchup = (
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-1">
+        <BotFace
+          name={state.bot.name}
+          accent={state.bot.accent}
+          level={state.level}
+          thinking={state.botThinking}
+        />
+        <p className="text-[10px] uppercase tracking-wider text-[#9a8b78]">
+          {botLevelLabel(state.level)}
+        </p>
+      </div>
+
+      <p className="font-serif text-sm tracking-[0.2em] text-[#c4a35a] sm:text-base">
+        VS
+      </p>
+
+      <div className="rounded-xl border border-[#3d342c]/80 bg-[#1a1510]/80 px-3 py-2 text-center backdrop-blur-sm">
+        <p className="truncate font-serif text-sm text-[#f3efe6] sm:text-base">
+          {state.playerName}
+        </p>
+        <p className="text-[10px] uppercase tracking-wider text-[#9a8b78]">
+          {myColor === 'w' ? 'White' : 'Black'}
+        </p>
+      </div>
+    </div>
+  )
+
   return (
     <div className="absolute inset-0 bg-[#6e7682]">
       <BoardStage
         fen={state.fen}
         immersive={effectiveView === '3d'}
-        leftSlot={
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex flex-col items-center gap-1">
-              <BotFace
-                name={state.bot.name}
-                accent={state.bot.accent}
-                level={state.level}
-                thinking={state.botThinking}
-              />
-              <p className="text-[10px] uppercase tracking-wider text-[#9a8b78]">
-                {botLevelLabel(state.level)}
-              </p>
-            </div>
-
-            <p className="font-serif text-sm tracking-[0.2em] text-[#c4a35a] sm:text-base">
-              VS
-            </p>
-
-            <div className="rounded-xl border border-[#3d342c]/80 bg-[#1a1510]/80 px-3 py-2 text-center backdrop-blur-sm">
-              <p className="truncate font-serif text-sm text-[#f3efe6] sm:text-base">
-                {state.playerName}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-[#9a8b78]">
-                {myColor === 'w' ? 'White' : 'Black'}
-              </p>
-            </div>
-          </div>
+        leftSlot={isMobile ? undefined : desktopMatchup}
+        mobileTop={
+          isMobile ? (
+            <MatchupBar
+              face={
+                <BotFace
+                  name={state.bot.name}
+                  accent={state.bot.accent}
+                  level={state.level}
+                  thinking={state.botThinking}
+                  compact
+                />
+              }
+              name={state.bot.name}
+              subtitle={botLevelLabel(state.level)}
+              fen={state.fen}
+              color={botColor}
+            />
+          ) : undefined
+        }
+        mobileBottom={
+          isMobile ? (
+            <MatchupBar
+              name={state.playerName}
+              subtitle={myColor === 'w' ? 'White' : 'Black'}
+              fen={state.fen}
+              color={myColor}
+            />
+          ) : undefined
         }
       >
         <div className="h-full w-full" key={boardKey}>
@@ -283,6 +316,31 @@ export function BotGameClient() {
           resign()
         }}
       />
+    </div>
+  )
+}
+
+function MatchupBar({
+  face,
+  name,
+  subtitle,
+  fen,
+  color,
+}: {
+  face?: ReactNode
+  name: string
+  subtitle: string
+  fen: string
+  color: Color
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-md bg-[#1a1510]/75 px-2 py-1 backdrop-blur-sm">
+      {face}
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-serif text-sm leading-tight text-[#f3efe6]">{name}</p>
+        <p className="text-[10px] uppercase tracking-wider text-[#9a8b78]">{subtitle}</p>
+      </div>
+      <MaterialInline fen={fen} color={color} />
     </div>
   )
 }

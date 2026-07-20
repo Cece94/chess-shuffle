@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { advantageFor, getMaterialScore } from '@/lib/chess/material'
+import type { Color } from '@/lib/chess/types'
 
 type Props = { fen: string }
 
@@ -52,5 +53,24 @@ function SidePill({ side, advantage }: { side: 'w' | 'b'; advantage: number }) {
         {ahead ? `+${advantage}` : '0'}
       </span>
     </div>
+  )
+}
+
+/** Compact +N glued next to a player name (mobile matchup bars). */
+export function MaterialInline({ fen, color }: { fen: string; color: Color }) {
+  const score = useMemo(() => getMaterialScore(fen), [fen])
+  const advantage = advantageFor(color, score)
+
+  if (advantage <= 0) {
+    return <span className="w-8 shrink-0" aria-hidden />
+  }
+
+  return (
+    <span
+      className="shrink-0 font-serif text-sm tabular-nums text-[#c4a35a]"
+      aria-label={`Ahead by ${advantage}`}
+    >
+      +{advantage}
+    </span>
   )
 }

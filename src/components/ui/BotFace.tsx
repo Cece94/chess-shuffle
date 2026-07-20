@@ -17,6 +17,8 @@ type Props = {
   level: BotLevel
   thinking: boolean
   mood?: BotFaceMood
+  /** Face only — parent shows the name (mobile matchup bar). */
+  compact?: boolean
 }
 
 const DEFAULT_MOOD: Record<BotLevel, BotFaceMood> = {
@@ -27,7 +29,14 @@ const DEFAULT_MOOD: Record<BotLevel, BotFaceMood> = {
 }
 
 /** Flat bot portrait — denser + angrier as difficulty rises. */
-export function BotFace({ name, accent, level, thinking, mood: moodProp }: Props) {
+export function BotFace({
+  name,
+  accent,
+  level,
+  thinking,
+  mood: moodProp,
+  compact = false,
+}: Props) {
   const [cycle, setCycle] = useState(0)
 
   useEffect(() => {
@@ -50,14 +59,20 @@ export function BotFace({ name, accent, level, thinking, mood: moodProp }: Props
       : DEFAULT_MOOD[level])
 
   return (
-    <div className="pointer-events-none relative flex flex-col items-center gap-2">
+    <div
+      className={`pointer-events-none relative flex flex-col items-center ${
+        compact ? 'gap-0' : 'gap-2'
+      }`}
+    >
       <div className="relative">
-        {thinking && <ThinkingBubble accent={accent} />}
+        {thinking && <ThinkingBubble accent={accent} compact={compact} />}
         <svg
           viewBox="0 -10 100 130"
-          className={`h-[6.75rem] w-[5.5rem] transition-transform duration-300 sm:h-[7.75rem] sm:w-[6.4rem] ${
-            thinking ? 'scale-105' : 'scale-100'
-          }`}
+          className={`transition-transform duration-300 ${
+            compact
+              ? 'h-10 w-8'
+              : 'h-[6.75rem] w-[5.5rem] sm:h-[7.75rem] sm:w-[6.4rem]'
+          } ${thinking ? 'scale-105' : 'scale-100'}`}
           aria-hidden
         >
           <ellipse cx="50" cy="114" rx="28" ry="4" fill="#1a1510" opacity="0.25" />
@@ -115,9 +130,11 @@ export function BotFace({ name, accent, level, thinking, mood: moodProp }: Props
           <ChinGear accent={accent} thinking={thinking} level={level} />
         </svg>
       </div>
-      <p className="max-w-[7.5rem] truncate text-center font-serif text-sm text-[#f3efe6] sm:text-base">
-        {name}
-      </p>
+      {!compact && (
+        <p className="max-w-[7.5rem] truncate text-center font-serif text-sm text-[#f3efe6] sm:text-base">
+          {name}
+        </p>
+      )}
     </div>
   )
 }
@@ -504,23 +521,38 @@ function Mouth({
   return <rect x="42" y="67" width="16" height="3" rx="1.5" fill={accent} opacity="0.85" />
 }
 
-function ThinkingBubble({ accent }: { accent: string }) {
+function ThinkingBubble({
+  accent,
+  compact,
+}: {
+  accent: string
+  compact?: boolean
+}) {
   return (
-    <div className="absolute -right-1 top-0 sm:-right-2 sm:top-1" aria-label="Thinking">
+    <div
+      className={`absolute ${compact ? '-right-0.5 top-0' : '-right-1 top-0 sm:-right-2 sm:top-1'}`}
+      aria-label="Thinking"
+    >
       <div
-        className="flex items-center gap-1 rounded-full border-2 px-2.5 py-1.5"
+        className={`flex items-center rounded-full border-2 ${
+          compact ? 'gap-0.5 px-1.5 py-0.5' : 'gap-1 px-2.5 py-1.5'
+        }`}
         style={{ borderColor: accent, background: '#1a1510' }}
       >
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="inline-block h-1.5 w-1.5 rounded-full animate-bounce"
+            className={`inline-block animate-bounce rounded-full ${
+              compact ? 'h-1 w-1' : 'h-1.5 w-1.5'
+            }`}
             style={{ background: accent, animationDelay: `${i * 130}ms` }}
           />
         ))}
       </div>
       <span
-        className="ml-3 mt-[-3px] block h-2 w-2 rotate-45 border-b-2 border-r-2"
+        className={`ml-3 mt-[-3px] block rotate-45 border-b-2 border-r-2 ${
+          compact ? 'h-1.5 w-1.5' : 'h-2 w-2'
+        }`}
         style={{ borderColor: accent, background: '#1a1510' }}
       />
     </div>
