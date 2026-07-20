@@ -150,7 +150,7 @@ function Mat({ map, color, roughness, metalness, bumpScale, envMapIntensity = 0.
 
 function PawnMat(props: MatProps) {
   return (
-    <group scale={0.88}>
+    <group scale={0.78}>
       <mesh castShadow geometry={getStauntonGeometry('p')} dispose={null}>
         <Mat {...props} />
       </mesh>
@@ -212,32 +212,31 @@ function BishopMat(props: MatProps) {
       <mesh
         castShadow
         geometry={getBishopCollar()}
-        position={[0, 0.58, 0]}
+        position={[0, 0.7, 0]}
         rotation={[Math.PI / 2, 0, 0]}
         dispose={null}
       >
         <Mat {...props} />
       </mesh>
-      {/* Classic diagonal mitre cleft */}
+      {/* Classic diagonal mitre cleft — high contrast so it reads vs pawn */}
       <mesh
         geometry={getBishopCleft()}
-        position={[0.02, 0.8, 0]}
-        rotation={[0, 0, 0.42]}
+        position={[0.018, 1.0, 0]}
+        rotation={[0, 0, 0.52]}
         dispose={null}
       >
-        <meshStandardMaterial color="#0a0806" roughness={0.85} transparent opacity={0.4} />
+        <meshStandardMaterial color="#0a0806" roughness={0.9} transparent opacity={0.55} />
       </mesh>
-      {/* Secondary shallow cut for depth */}
       <mesh
         geometry={getBishopCleft()}
-        position={[-0.01, 0.82, 0]}
-        rotation={[0, 0, 0.42]}
-        scale={[0.55, 0.85, 0.7]}
+        position={[-0.008, 1.02, 0]}
+        rotation={[0, 0, 0.52]}
+        scale={[0.5, 0.9, 0.72]}
         dispose={null}
       >
-        <meshStandardMaterial color="#0a0806" roughness={0.9} transparent opacity={0.22} />
+        <meshStandardMaterial color="#0a0806" roughness={0.95} transparent opacity={0.28} />
       </mesh>
-      <mesh castShadow geometry={getBishopFinial()} position={[0, 1.01, 0]} scale={0.85} dispose={null}>
+      <mesh castShadow geometry={getBishopFinial()} position={[0, 1.31, 0]} scale={0.85} dispose={null}>
         <Mat {...props} />
       </mesh>
     </group>

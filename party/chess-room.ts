@@ -237,9 +237,9 @@ export class ChessRoom extends Server<Env> {
       return
     }
 
-    // Keep seat colors; only reshuffle
-    const whiteId = this.state.whiteId
-    const blackId = this.state.blackId
+    // Swap sides vs previous game, then reshuffle
+    const prevWhite = this.state.whiteId
+    const prevBlack = this.state.blackId
 
     const spId = randomSpId()
     const fen = fenFromSpId(spId)
@@ -252,8 +252,8 @@ export class ChessRoom extends Server<Env> {
     this.state.isCheck = snap.isCheck
     this.state.lastMove = null
     this.state.winner = null
-    this.state.whiteId = whiteId
-    this.state.blackId = blackId
+    this.state.whiteId = prevBlack
+    this.state.blackId = prevWhite
     this.broadcastState()
   }
 

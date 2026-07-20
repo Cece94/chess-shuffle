@@ -158,6 +158,15 @@ export function LobbyPanel({ code }: Props) {
         {!process.env.NEXT_PUBLIC_PARTYKIT_HOST && ' · local room sync'}
       </p>
 
+      {!process.env.NEXT_PUBLIC_PARTYKIT_HOST && (
+        <p className="rounded-lg border border-amber-700/50 bg-amber-950/40 px-3 py-2 text-xs text-amber-200/90">
+          Multiplayer needs{' '}
+          <code className="text-amber-100">NEXT_PUBLIC_PARTYKIT_HOST</code> on
+          Vercel (Cloudflare Worker URL). Without it, lobbies stay stuck on
+          deploy.
+        </p>
+      )}
+
       {error && <p className="text-sm text-red-400">{error}</p>}
 
       {isHost ? (
@@ -175,7 +184,7 @@ export function LobbyPanel({ code }: Props) {
         </p>
       ) : (
         <p className="rounded-lg border border-[#3d342c] px-4 py-3 text-center text-sm text-[#9a8b78]">
-          Connecting to lobby…
+          {connected ? 'Joining lobby…' : 'Connecting to lobby…'}
         </p>
       )}
     </div>

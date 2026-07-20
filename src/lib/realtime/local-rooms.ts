@@ -150,8 +150,12 @@ export function applyLocalMessage(
       if (!state.guestId) {
         return { state, error: 'Wait for a friend to join.' }
       }
-      // Keep seat colors; only reshuffle the position
+      // Swap sides vs previous game, then reshuffle
+      const prevWhite = state.whiteId
+      const prevBlack = state.blackId
       beginGame(state)
+      state.whiteId = prevBlack
+      state.blackId = prevWhite
       return { state }
     }
     case 'move': {

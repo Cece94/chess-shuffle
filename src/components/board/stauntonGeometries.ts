@@ -69,34 +69,35 @@ export function getStauntonGeometry(type: PieceSymbol): THREE.BufferGeometry {
         ], 48),
       )
     case 'b':
-      return get('bishop-v3', () =>
+      return get('bishop-v6', () =>
         lathe([
           [0.0, 0],
-          [0.28, 0],
-          [0.3, 0.035],
-          [0.26, 0.07],
-          [0.18, 0.1],
-          // Pedestal rings
-          [0.22, 0.13],
-          [0.24, 0.16],
-          [0.18, 0.19],
-          [0.13, 0.22],
-          // Slim stem
-          [0.11, 0.32],
-          [0.1, 0.48],
-          // Collar below mitre
-          [0.14, 0.54],
-          [0.16, 0.58],
-          [0.13, 0.62],
-          // Mitre: wide mid, then sharp conical tip
-          [0.15, 0.66],
-          [0.175, 0.72],
-          [0.17, 0.78],
-          [0.13, 0.84],
-          [0.085, 0.89],
-          [0.045, 0.93],
-          [0.02, 0.96],
-          [0.0, 0.98],
+          [0.26, 0],
+          [0.28, 0.035],
+          [0.24, 0.07],
+          [0.16, 0.1],
+          // Slim pedestal rings
+          [0.2, 0.13],
+          [0.215, 0.16],
+          [0.16, 0.19],
+          [0.1, 0.22],
+          // Extra-long thin stem
+          [0.08, 0.4],
+          [0.07, 0.6],
+          // Collar shelf under the mitre
+          [0.11, 0.64],
+          [0.15, 0.68],
+          [0.155, 0.72],
+          [0.12, 0.75],
+          // Tall conical mitre — slim + pointed
+          [0.145, 0.8],
+          [0.16, 0.88],
+          [0.135, 1.0],
+          [0.095, 1.1],
+          [0.055, 1.18],
+          [0.025, 1.24],
+          [0.008, 1.27],
+          [0.0, 1.28],
         ], 48),
       )
     case 'q':
@@ -221,9 +222,9 @@ export function getRookBattlementRing(): THREE.TorusGeometry {
   return get('rook-rim-v2', () => new THREE.TorusGeometry(0.2, 0.016, 8, 32)) as THREE.TorusGeometry
 }
 
-/** Thin collar band under the bishop mitre. */
+/** Slim collar band under the bishop mitre. */
 export function getBishopCollar(): THREE.TorusGeometry {
-  return get('bishop-collar', () => new THREE.TorusGeometry(0.145, 0.018, 8, 28)) as THREE.TorusGeometry
+  return get('bishop-collar-v3', () => new THREE.TorusGeometry(0.14, 0.02, 10, 32)) as THREE.TorusGeometry
 }
 
 export function getKingCross(): {
@@ -239,12 +240,12 @@ export function getKingCross(): {
 }
 
 export function getBishopFinial(): THREE.SphereGeometry {
-  return get('bishop-ball-v2', () => new THREE.SphereGeometry(0.04, 16, 12)) as THREE.SphereGeometry
+  return get('bishop-ball-v4', () => new THREE.SphereGeometry(0.04, 16, 12)) as THREE.SphereGeometry
 }
 
 /** Soft oval for the mitre cleft shadow (not wood). */
 export function getBishopCleft(): THREE.BoxGeometry {
-  return get('bishop-cleft', () => new THREE.BoxGeometry(0.028, 0.22, 0.16)) as THREE.BoxGeometry
+  return get('bishop-cleft-v3', () => new THREE.BoxGeometry(0.028, 0.32, 0.17)) as THREE.BoxGeometry
 }
 
 /** Coronet pearl: small turned teardrop (not a bare sphere). */

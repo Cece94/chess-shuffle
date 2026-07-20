@@ -7,6 +7,7 @@ import { useGameUiStore } from '@/store/gameUiStore'
 import { PieceMesh } from './PieceMesh'
 import { CapturedFlyaway, type FlyawaySpec } from './CapturedFlyaway'
 import type { ChessMove, Color } from '@/lib/chess/types'
+import { shouldSuppressBoardClick } from './orbitClickGuard'
 
 type SceneProps = {
   fen: string
@@ -99,6 +100,8 @@ export function Scene({ fen, interactive, lastMove, onMove, myColor }: SceneProp
 
   function handleSquareClick(square: string) {
     if (!interactive) return
+    // Ignore click that ends an orbit drag
+    if (shouldSuppressBoardClick()) return
 
     // Move to a highlighted target
     if (selectedSquare && legalTargets.includes(square)) {

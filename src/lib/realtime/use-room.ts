@@ -110,6 +110,12 @@ export function useRoom(code: string) {
         }
       })
 
+      socket.addEventListener('error', () => {
+        if (!cancelled) {
+          setError('Realtime connection failed. Check NEXT_PUBLIC_PARTYKIT_HOST.')
+        }
+      })
+
       socket.addEventListener('close', () => {
         if (!cancelled) setConnected(false)
       })
