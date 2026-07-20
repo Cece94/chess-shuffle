@@ -93,8 +93,13 @@ export function CameraRig({ orientation }: { orientation: Color }) {
 
   useFrame(() => {
     const cam = camera as PerspectiveCamera
+    const aspect = size.width / Math.max(size.height, 1)
+    // Portrait only: pull back (+ slight FOV) so the 8×8 board fits horizontally
+    const portrait = aspect < 1
+    const fit = portrait ? Math.min(1.9, Math.pow(1 / aspect, 0.55) * 0.98) : 1
+
     const zSign = orientation === 'w' ? 1 : -1
-    const r = Math.hypot(BASE_HEIGHT, BASE_BACK) * zoom.current
+    const r = Math.hypot(BASE_HEIGHT, BASE_BACK) * zoom.current * fit
     const y = r * Math.cos(polar.current)
     const flat = r * Math.sin(polar.current)
     // Base view is along ±Z; yaw rotates around Y
@@ -103,8 +108,7 @@ export function CameraRig({ orientation }: { orientation: Color }) {
     cam.position.set(x, y, z)
     cam.up.set(0, 1, 0)
     cam.lookAt(0, 0, 0)
-    const aspect = size.width / Math.max(size.height, 1)
-    cam.fov = aspect < 1 ? 44 : 40
+    cam.fov = portrait ? Math.min(52, 40 + (1 - aspect) * 22) : 40
     cam.updateProjectionMatrix()
   })
 

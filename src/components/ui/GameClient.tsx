@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { Board2D } from '@/components/board/Board2D'
 import { BoardShell } from '@/components/board/BoardShell'
 import { MaterialMeter } from '@/components/ui/MaterialMeter'
-import { playCaptureSound, playMoveSound } from '@/lib/audio/move-sound'
+import { playCaptureSound, playCheckSound, playMoveSound } from '@/lib/audio/move-sound'
 import { wasCapture } from '@/lib/chess/engine'
 import { useRoom } from '@/lib/realtime/use-room'
 import { useGameUiStore } from '@/store/gameUiStore'
-import type { Color } from '@/lib/chess/types'
+import type { ChessMove, Color } from '@/lib/chess/types'
 
 type Props = { code: string }
 
@@ -17,6 +18,8 @@ export function GameClient({ code }: Props) {
   const { state, youId, error, send } = useRoom(code)
   const clearSelection = useGameUiStore((s) => s.clearSelection)
   const resetViewCamera = useGameUiStore((s) => s.resetViewCamera)
+  const viewMode = useGameUiStore((s) => s.viewMode)
+  const setViewMode = useGameUiStore((s) => s.setViewMode)
   const skipMoveSound = useRef(true)
   const prevFenRef = useRef<string | null>(null)
   const lastSoundKey = useRef<string | null>(null)
@@ -57,14 +60,16 @@ export function GameClient({ code }: Props) {
     }
 
     const before = prevFenRef.current
-    if (before && wasCapture(before, state.lastMove)) {
+    if (state.isCheck) {
+      playCheckSound()
+    } else if (before && wasCapture(before, state.lastMove)) {
       playCaptureSound()
     } else {
       playMoveSound()
     }
     lastSoundKey.current = soundKey
     prevFenRef.current = state.fen
-  }, [state?.fen, state?.lastMove, moveKey])
+  }, [state?.fen, state?.lastMove, state?.isCheck, moveKey])
 
   const myColor: Color | null = useMemo(() => {
     if (!state) return null
@@ -84,18 +89,19 @@ export function GameClient({ code }: Props) {
     )
   }
 
+  const boardProps = {
+    fen: state.fen,
+    orientation: (myColor ?? 'w') as Color,
+    interactive,
+    lastMove: state.lastMove,
+    myColor,
+    onMove: (move: ChessMove) => void send({ type: 'move', move }),
+  }
+
   return (
     <div className="fixed inset-0 bg-[#6e7682]">
-      {/* Full-viewport Three.js canvas */}
       <div className="absolute inset-0">
-        <BoardShell
-          fen={state.fen}
-          orientation={myColor ?? 'w'}
-          interactive={interactive}
-          lastMove={state.lastMove}
-          myColor={myColor}
-          onMove={(move) => void send({ type: 'move', move })}
-        />
+        {viewMode === '3d' ? <BoardShell {...boardProps} /> : <Board2D {...boardProps} />}
       </div>
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3 sm:p-4">
@@ -105,6 +111,29 @@ export function GameClient({ code }: Props) {
             Position #{state.spId ?? '—'}
           </h1>
         </div>
+
+        <div
+          className="pointer-events-auto flex rounded-lg border border-[#3d342c] bg-[#1a1510]/80 p-0.5 backdrop-blur-sm"
+          role="group"
+          aria-label="Board view"
+        >
+          {(['2d', '3d'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setViewMode(mode)}
+              aria-pressed={viewMode === mode}
+              className={`rounded-md px-3 py-1.5 text-sm uppercase tracking-wide transition-colors ${
+                viewMode === mode
+                  ? 'bg-[#c4a35a] font-semibold text-[#1a1510]'
+                  : 'text-[#9a8b78] hover:text-[#f3efe6]'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+
         <div className="rounded-lg bg-[#1a1510]/75 px-3 py-2 text-right text-sm text-[#9a8b78] backdrop-blur-sm">
           <p>
             Turn:{' '}
@@ -124,29 +153,31 @@ export function GameClient({ code }: Props) {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-end justify-between gap-2 p-3 sm:p-4">
         <div className="pointer-events-auto flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={resetViewCamera}
-            aria-label="Reset view"
-            title="Reset view"
-            className="inline-flex items-center gap-2 rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-3 py-2 text-sm text-[#9a8b78] backdrop-blur-sm hover:border-[#c4a35a]/50 hover:text-[#f3efe6]"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-4 w-4"
-              aria-hidden
+          {viewMode === '3d' && (
+            <button
+              type="button"
+              onClick={resetViewCamera}
+              aria-label="Reset view"
+              title="Reset view"
+              className="inline-flex items-center gap-2 rounded-lg border border-[#3d342c] bg-[#1a1510]/80 px-3 py-2 text-sm text-[#9a8b78] backdrop-blur-sm hover:border-[#c4a35a]/50 hover:text-[#f3efe6]"
             >
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-            Reset view
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+                aria-hidden
+              >
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Reset view
+            </button>
+          )}
           {state.phase === 'playing' && (
             <button
               type="button"

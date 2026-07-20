@@ -1,5 +1,6 @@
 let moveAudio: HTMLAudioElement | null = null
 let captureAudio: HTMLAudioElement | null = null
+let checkAudio: HTMLAudioElement | null = null
 
 function getAudio(path: string, cached: HTMLAudioElement | null): HTMLAudioElement {
   if (cached) return cached
@@ -29,4 +30,11 @@ export function playCaptureSound() {
   if (typeof window === 'undefined') return
   captureAudio = getAudio('/sounds/capture.mp3', captureAudio)
   play(captureAudio)
+}
+
+/** Play once when a move puts the opponent in check. */
+export function playCheckSound() {
+  if (typeof window === 'undefined') return
+  checkAudio = getAudio('/sounds/move-check.mp3', checkAudio)
+  play(checkAudio)
 }
